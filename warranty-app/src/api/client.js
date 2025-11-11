@@ -5,10 +5,12 @@ import { storage } from '../utils/storage';
 // Create axios instance with default URL
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 10000, // Increased timeout to 60s for slow queries (especially with large datasets)
+  timeout: 10000, // Default timeout for regular requests
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  maxContentLength: Infinity,
+  maxBodyLength: Infinity
 });
 
 // Update baseURL with dynamic IP on initialization
@@ -27,9 +29,14 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Don't set Content-Type for FormData - let axios handle it
+    // Handle FormData properly for React Native
     if (config.data instanceof FormData) {
+      // Remove Content-Type header - let the browser/React Native set it with boundary
       delete config.headers['Content-Type'];
+      // Increase timeout for file uploads
+      if (!config.timeout || config.timeout < 60000) {
+        config.timeout = 60000; // 60 seconds for uploads
+      }
     }
     
     return config;

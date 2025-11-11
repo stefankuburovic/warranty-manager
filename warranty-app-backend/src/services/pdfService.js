@@ -8,6 +8,16 @@ class PDFService {
   async generateProductPDF(product, user) {
     return new Promise(async (resolve, reject) => {
       try {
+        console.log('Generating PDF for product:', product.product_id);
+        
+        if (!product) {
+          throw new Error('Product is required');
+        }
+        
+        if (!user) {
+          throw new Error('User is required');
+        }
+
         const doc = new PDFDocument({ 
           size: 'A4', 
           margin: 50,
@@ -20,8 +30,14 @@ class PDFService {
 
         const chunks = [];
         doc.on('data', chunk => chunks.push(chunk));
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-        doc.on('error', reject);
+        doc.on('end', () => {
+          console.log('PDF generation completed, size:', Buffer.concat(chunks).length);
+          resolve(Buffer.concat(chunks));
+        });
+        doc.on('error', (error) => {
+          console.error('PDF document error:', error);
+          reject(error);
+        });
 
         // Header
         await this.addHeader(doc, user);
@@ -37,7 +53,7 @@ class PDFService {
           await this.addStoreInfo(doc, product.Store);
         }
         
-        // Receipt Image
+        // Receipt Image (non-blocking - continues even if it fails)
         if (product.Documents && product.Documents.length > 0) {
           await this.addReceiptImage(doc, product.Documents[0]);
         }
@@ -47,6 +63,8 @@ class PDFService {
         
         doc.end();
       } catch (error) {
+        console.error('PDF generation error:', error);
+        console.error('Error stack:', error.stack);
         reject(error);
       }
     });
@@ -98,8 +116,13 @@ class PDFService {
         doc.addPage();
         await this.addSummaryPage(doc, products);
         
+        // Add footer to all pages
+        this.addFooter(doc);
+        
         doc.end();
       } catch (error) {
+        console.error('PDF generation error in generateBulkPDF:', error);
+        console.error('Error stack:', error.stack);
         reject(error);
       }
     });
@@ -114,15 +137,21 @@ class PDFService {
        .fillColor('#6200ee')
        .text('Warranty Manager', 50, y, { align: 'left' });
     
-    // User Info
+    // User Info - handle missing fields gracefully
+    const userName = user.full_name || user.username || user.email || 'User';
+    const userEmail = user.email || '';
+    
     doc.fontSize(10)
        .fillColor('#666')
-       .text(user.full_name || user.email, 400, y, { align: 'right' })
-       .text(user.email, 400, y + 15, { align: 'right' });
+       .text(userName, 400, y, { align: 'right' });
+    
+    if (userEmail) {
+      doc.text(userEmail, 400, y + 15, { align: 'right' });
+    }
     
     // Date
     doc.fontSize(9)
-       .text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 400, y + 30, { align: 'right' });
+       .text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 400, y + (userEmail ? 30 : 15), { align: 'right' });
     
     // Line separator
     doc.moveTo(50, y + 50)
@@ -219,7 +248,19 @@ class PDFService {
     
     const startY = doc.y;
     const today = new Date();
-    const warrantyEnd = new Date(product.warranty_end_date);
+    
+    // Calculate warranty end date if not present
+    let warrantyEnd;
+    if (product.warranty_end_date) {
+      warrantyEnd = new Date(product.warranty_end_date);
+    } else if (product.purchase_date && product.warranty_duration_months) {
+      warrantyEnd = new Date(product.purchase_date);
+      warrantyEnd.setMonth(warrantyEnd.getMonth() + product.warranty_duration_months);
+    } else {
+      warrantyEnd = new Date();
+      warrantyEnd.setFullYear(warrantyEnd.getFullYear() + 1); // Default to 1 year if no data
+    }
+    
     const daysRemaining = Math.ceil((warrantyEnd - today) / (1000 * 60 * 60 * 24));
     const isExpired = daysRemaining < 0;
     
@@ -227,8 +268,11 @@ class PDFService {
     doc.fontSize(10)
        .fillColor('#666')
        .text('Warranty Duration:', 50, startY);
+    const durationText = product.warranty_duration_months 
+      ? `${product.warranty_duration_months} months` 
+      : 'Not specified';
     doc.fillColor('#000')
-       .text(`${product.warranty_duration_months} months`, 170, startY);
+       .text(durationText, 170, startY);
     
     // Warranty End Date
     doc.fillColor('#666')
@@ -302,7 +346,14 @@ class PDFService {
     try {
       // Validate document and cloud_storage_url
       if (!document || !document.cloud_storage_url) {
-        throw new Error('Document or cloud_storage_url is missing');
+        console.warn('Document or cloud_storage_url is missing, skipping image');
+        return;
+      }
+
+      // Validate AWS configuration
+      if (!process.env.AWS_BUCKET_NAME) {
+        console.warn('AWS_BUCKET_NAME not configured, skipping image');
+        return;
       }
 
       const y = doc.y + 20;
@@ -320,6 +371,11 @@ class PDFService {
       
       doc.moveDown(1);
       
+      console.log('Downloading image from S3:', {
+        bucket: process.env.AWS_BUCKET_NAME,
+        key: document.cloud_storage_url
+      });
+      
       // Download image from S3
       const s3Object = await s3.getObject({
         Bucket: process.env.AWS_BUCKET_NAME,
@@ -331,8 +387,19 @@ class PDFService {
         throw new Error('S3 object body is empty');
       }
       
+      console.log('Processing image with sharp, size:', s3Object.Body.length);
+      
       // Process image - resize to fit page
-      const processedImage = await sharp(s3Object.Body)
+      // Handle both images and PDFs
+      let processedImage;
+      const contentType = s3Object.ContentType || document.mime_type || 'image/jpeg';
+      
+      if (contentType === 'application/pdf') {
+        // Skip PDF files - can't embed in PDF easily
+        throw new Error('PDF documents cannot be embedded in PDF export');
+      }
+      
+      processedImage = await sharp(s3Object.Body)
         .resize(495, 400, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 80 })
         .toBuffer();
@@ -347,8 +414,19 @@ class PDFService {
       // Update y position
       doc.y = imageY + 410;
       
+      console.log('Image added to PDF successfully');
+      
     } catch (error) {
-      console.error('Error adding receipt image:', error);
+      console.error('Error adding receipt image:', error.message);
+      console.error('Error details:', {
+        document: document ? {
+          id: document.document_id,
+          hasUrl: !!document.cloud_storage_url,
+          url: document.cloud_storage_url?.substring(0, 50)
+        } : 'null',
+        awsBucket: process.env.AWS_BUCKET_NAME ? 'configured' : 'missing'
+      });
+      
       // Continue without image if error
       const y = doc.y + 20;
       if (y > 650) {
@@ -367,18 +445,22 @@ class PDFService {
     // Title
     doc.fontSize(30)
        .fillColor('#6200ee')
-       .text('Warranty Report', 50, 200, { align: 'center' });
+       .text('Warranty Report', 50, 200, { width: 495, align: 'center' });
     
     doc.moveDown(2);
     
     // User Info
+    const userName = user.full_name || user.username || user.email || 'User';
     doc.fontSize(16)
        .fillColor('#000')
-       .text(user.full_name || user.email, { align: 'center' });
+       .text(userName, 50, doc.y, { width: 495, align: 'center' });
     
-    doc.fontSize(12)
-       .fillColor('#666')
-       .text(user.email, { align: 'center' });
+    if (user.email) {
+      doc.fontSize(12)
+         .fillColor('#666')
+         .text(user.email, 50, doc.y + 20, { width: 495, align: 'center' });
+      doc.y += 20;
+    }
     
     doc.moveDown(3);
     
@@ -447,9 +529,15 @@ class PDFService {
     
     // Calculate statistics
     const totalProducts = products.length;
-    const activeWarranties = products.filter(p => 
-      new Date(p.warranty_end_date) >= new Date()
-    ).length;
+    const today = new Date();
+    const activeWarranties = products.filter(p => {
+      if (!p.warranty_end_date) return false;
+      try {
+        return new Date(p.warranty_end_date) >= today;
+      } catch (e) {
+        return false;
+      }
+    }).length;
     const expiredWarranties = totalProducts - activeWarranties;
     const totalSpent = products.reduce((sum, p) => sum + (parseFloat(p.purchase_price) || 0), 0);
     
@@ -499,28 +587,54 @@ class PDFService {
 
   // Add footer to each page
   addFooter(doc) {
-    const pages = doc.bufferedPageRange();
-    
-    for (let i = 0; i < pages.count; i++) {
-      doc.switchToPage(i);
+    try {
+      const pages = doc.bufferedPageRange();
       
-      // Page number
-      doc.fontSize(9)
-         .fillColor('#999')
-         .text(
-           `Page ${i + 1} of ${pages.count}`,
-           50,
-           doc.page.height - 50,
-           { align: 'center' }
-         );
+      if (!pages || typeof pages.count !== 'number' || pages.count === 0) {
+        console.warn('No pages found for footer, skipping');
+        return;
+      }
       
-      // App name
-      doc.text(
-        'Generated by Warranty Manager',
-        50,
-        doc.page.height - 35,
-        { align: 'center' }
-      );
+      // bufferedPageRange() returns {start: number, count: number}
+      // start is the first buffered page index, count is the number of buffered pages
+      const startPage = pages.start !== undefined ? pages.start : 0;
+      const totalPages = pages.count;
+      
+      // Iterate through all buffered pages
+      for (let i = 0; i < totalPages; i++) {
+        const pageIndex = startPage + i;
+        try {
+          // Switch to the page (0-indexed)
+          doc.switchToPage(pageIndex);
+          
+          // Page number (1-indexed for display)
+          const pageNumber = pageIndex + 1;
+          const totalPageCount = startPage + totalPages;
+          
+          doc.fontSize(9)
+             .fillColor('#999')
+             .text(
+               `Page ${pageNumber} of ${totalPageCount}`,
+               50,
+               doc.page.height - 50,
+               { align: 'center' }
+             );
+          
+          // App name
+          doc.text(
+            'Generated by Warranty Manager',
+            50,
+            doc.page.height - 35,
+            { align: 'center' }
+          );
+        } catch (pageError) {
+          console.error(`Error adding footer to page ${pageIndex}:`, pageError.message);
+          // Continue with next page - don't let one page failure stop the process
+        }
+      }
+    } catch (error) {
+      console.error('Error adding footer:', error.message);
+      // Don't throw - footer is not critical, PDF will still be generated
     }
   }
 }

@@ -1,18 +1,45 @@
 import apiClient from './client';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 export const exportApi = {
   // Export single product as PDF
   async exportProduct(productId) {
     try {
+      console.log('📄 Requesting PDF export for product:', productId);
       const response = await apiClient.get(`/export/products/${productId}/pdf`, {
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        timeout: 120000 // 120 seconds for PDF generation
       });
       
+      if (!response.data || response.data.byteLength === 0) {
+        throw new Error('PDF data is empty');
+      }
+      
+      console.log('✅ PDF received, size:', response.data.byteLength, 'bytes');
       return response.data;
     } catch (error) {
-      console.error('Export product error:', error);
+      console.error('❌ Export product error:', error);
+      
+      // Handle error response that might be JSON instead of arraybuffer
+      if (error.response && error.response.data) {
+        try {
+          // Try to parse as text first (might be JSON error)
+          const textDecoder = new TextDecoder();
+          const errorText = textDecoder.decode(error.response.data);
+          const errorJson = JSON.parse(errorText);
+          console.error('Error details:', errorJson);
+          throw new Error(errorJson.message || errorJson.error || 'Failed to generate PDF');
+        } catch (parseError) {
+          // If parsing fails, it's likely binary data (unexpected)
+          console.error('Could not parse error response');
+        }
+      }
+      
+      if (error.message === 'Network Error') {
+        throw new Error('Network connection failed. Please check your internet connection.');
+      }
+      
       throw error;
     }
   },
@@ -20,13 +47,36 @@ export const exportApi = {
   // Export all products as PDF
   async exportAllProducts() {
     try {
+      console.log('📄 Requesting PDF export for all products');
       const response = await apiClient.get('/export/products/all/pdf', {
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        timeout: 120000 // 120 seconds for PDF generation
       });
       
+      if (!response.data || response.data.byteLength === 0) {
+        throw new Error('PDF data is empty');
+      }
+      
+      console.log('✅ PDF received, size:', response.data.byteLength, 'bytes');
       return response.data;
     } catch (error) {
-      console.error('Export all error:', error);
+      console.error('❌ Export all error:', error);
+      
+      if (error.response && error.response.data) {
+        try {
+          const textDecoder = new TextDecoder();
+          const errorText = textDecoder.decode(error.response.data);
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || errorJson.error || 'Failed to generate PDF');
+        } catch (parseError) {
+          // Ignore parse errors
+        }
+      }
+      
+      if (error.message === 'Network Error') {
+        throw new Error('Network connection failed. Please check your internet connection.');
+      }
+      
       throw error;
     }
   },
@@ -34,14 +84,37 @@ export const exportApi = {
   // Export filtered products
   async exportFiltered(filters) {
     try {
+      console.log('📄 Requesting PDF export for filtered products:', filters);
       const response = await apiClient.get('/export/products/filtered/pdf', {
         params: filters,
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        timeout: 120000 // 120 seconds for PDF generation
       });
       
+      if (!response.data || response.data.byteLength === 0) {
+        throw new Error('PDF data is empty');
+      }
+      
+      console.log('✅ PDF received, size:', response.data.byteLength, 'bytes');
       return response.data;
     } catch (error) {
-      console.error('Export filtered error:', error);
+      console.error('❌ Export filtered error:', error);
+      
+      if (error.response && error.response.data) {
+        try {
+          const textDecoder = new TextDecoder();
+          const errorText = textDecoder.decode(error.response.data);
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || errorJson.error || 'Failed to generate PDF');
+        } catch (parseError) {
+          // Ignore parse errors
+        }
+      }
+      
+      if (error.message === 'Network Error') {
+        throw new Error('Network connection failed. Please check your internet connection.');
+      }
+      
       throw error;
     }
   },
@@ -90,7 +163,7 @@ export const exportApi = {
         base64String = result;
       }
       
-      // Write file - handle EncodingType properly
+      // Write file using legacy API (supports base64 encoding)
       const encodingType = FileSystem.EncodingType?.Base64 || 'base64';
       await FileSystem.writeAsStringAsync(fileUri, base64String, {
         encoding: encodingType

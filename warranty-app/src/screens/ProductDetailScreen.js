@@ -369,6 +369,20 @@ export default function ProductDetailScreen({ navigation, route }) {
           </Card>
         )}
 
+        {/* Service Center Finder */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <Button
+              mode="outlined"
+              icon="wrench"
+              onPress={() => navigation.navigate('ServiceCenters', { productId: product.product_id })}
+              style={styles.actionButton}
+            >
+              {t('location.findServiceCenters') || 'Find Service Centers'}
+            </Button>
+          </Card.Content>
+        </Card>
+
         {/* Export Button */}
         <Card style={styles.card}>
           <Card.Content>

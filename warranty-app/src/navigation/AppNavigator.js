@@ -28,6 +28,8 @@ import BarcodeScannerScreen from '../screens/BarcodeScannerScreen';
 import ScanResultScreen from '../screens/ScanResultScreen';
 import SearchScreen from '../screens/SearchScreen';
 import FilterScreen from '../screens/FilterScreen';
+import MapScreen from '../screens/MapScreen';
+import ServiceCenterScreen from '../screens/ServiceCenterScreen';
 
 const Stack = createStackNavigator();
 
@@ -157,6 +159,16 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen 
               name="SearchFilters" 
               component={FilterScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Map" 
+              component={MapScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="ServiceCenters" 
+              component={ServiceCenterScreen}
               options={{ headerShown: false }}
             />
           </>

@@ -7,6 +7,11 @@ exports.exportProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Validate that id is a number (to prevent route confusion)
+    if (isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+
     // Get product with all relations
     const product = await Product.findOne({
       where: {
@@ -28,8 +33,18 @@ exports.exportProduct = async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
+    // Prepare user object for PDF generation
+    const userForPDF = {
+      user_id: req.user.user_id,
+      email: req.user.email,
+      full_name: req.user.full_name || req.user.username || req.user.email,
+      username: req.user.username
+    };
+
+    console.log('Generating PDF for product:', id, 'User:', userForPDF.email);
+
     // Generate PDF
-    const pdfBuffer = await pdfService.generateProductPDF(product, req.user);
+    const pdfBuffer = await pdfService.generateProductPDF(product, userForPDF);
 
     // Set headers for PDF download
     const filename = `warranty-${product.product_name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
@@ -41,7 +56,12 @@ exports.exportProduct = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Export product error:', error);
-    res.status(500).json({ error: 'Failed to export product' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to export product',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -70,8 +90,18 @@ exports.exportAllProducts = async (req, res) => {
       return res.status(404).json({ error: 'No products to export' });
     }
 
+    // Prepare user object for PDF generation
+    const userForPDF = {
+      user_id: req.user.user_id,
+      email: req.user.email,
+      full_name: req.user.full_name || req.user.username || req.user.email,
+      username: req.user.username
+    };
+
+    console.log('Generating bulk PDF for', products.length, 'products, User:', userForPDF.email);
+
     // Generate bulk PDF
-    const pdfBuffer = await pdfService.generateBulkPDF(products, req.user);
+    const pdfBuffer = await pdfService.generateBulkPDF(products, userForPDF);
 
     // Set headers for PDF download
     const filename = `warranty-report-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -83,7 +113,12 @@ exports.exportAllProducts = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Export all products error:', error);
-    res.status(500).json({ error: 'Failed to export products' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to export products',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -125,7 +160,17 @@ exports.exportFiltered = async (req, res) => {
       return res.status(404).json({ error: 'No products match the filter' });
     }
 
-    const pdfBuffer = await pdfService.generateBulkPDF(products, req.user);
+    // Prepare user object for PDF generation
+    const userForPDF = {
+      user_id: req.user.user_id,
+      email: req.user.email,
+      full_name: req.user.full_name || req.user.username || req.user.email,
+      username: req.user.username
+    };
+
+    console.log('Generating filtered PDF for', products.length, 'products, User:', userForPDF.email);
+
+    const pdfBuffer = await pdfService.generateBulkPDF(products, userForPDF);
 
     const filename = `warranty-${status || 'filtered'}-${new Date().toISOString().split('T')[0]}.pdf`;
     
@@ -136,7 +181,12 @@ exports.exportFiltered = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Export filtered error:', error);
-    res.status(500).json({ error: 'Failed to export filtered products' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to export filtered products',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

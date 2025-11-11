@@ -36,9 +36,10 @@ export default function ExportScreen({ navigation }) {
       );
     } catch (error) {
       console.error('Export error:', error);
+      const errorMessage = error.message || t('export.exportFailed');
       Alert.alert(
         t('common.error'),
-        t('export.exportFailed')
+        errorMessage
       );
     } finally {
       setIsExporting(false);

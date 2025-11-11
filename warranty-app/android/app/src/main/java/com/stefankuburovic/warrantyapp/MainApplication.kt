@@ -1,4 +1,4 @@
-package com.warrantymanager
+package com.stefankuburovic.warrantyapp
 
 import android.app.Application
 import android.content.res.Configuration

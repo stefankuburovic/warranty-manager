@@ -14,6 +14,7 @@ const FamilyMember = require('./FamilyMember');
 const SharedProduct = require('./SharedProduct');
 const SearchHistory = require('./SearchHistory')(sequelize);
 const SavedSearch = require('./SavedSearch')(sequelize);
+const ServiceCenter = require('./ServiceCenter');
 
 // User -> Products (One to Many)
 User.hasMany(Product, { foreignKey: 'user_id', onDelete: 'CASCADE' });
@@ -88,6 +89,13 @@ SearchHistory.belongsTo(User, { foreignKey: 'user_id' });
 User.hasMany(SavedSearch, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 SavedSearch.belongsTo(User, { foreignKey: 'user_id' });
 
+// Service Center associations
+ServiceCenter.belongsTo(Category, {
+  foreignKey: 'category_id',
+  onDelete: 'SET NULL'
+});
+Category.hasMany(ServiceCenter, { foreignKey: 'category_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -104,6 +112,7 @@ module.exports = {
   FamilyMember,
   SharedProduct,
   SearchHistory,
-  SavedSearch
+  SavedSearch,
+  ServiceCenter
 };
 

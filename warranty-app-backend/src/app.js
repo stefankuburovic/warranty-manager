@@ -15,6 +15,7 @@ const familyRoutes = require('./routes/family');
 const analyticsRoutes = require('./routes/analytics');
 const barcodeRoutes = require('./routes/barcode');
 const searchRoutes = require('./routes/search');
+const locationRoutes = require('./routes/location');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -28,8 +29,9 @@ app.use(cors({
     : true, // Allow all origins in development (React Native doesn't use CORS like browsers)
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase body parser limits for file uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
@@ -44,6 +46,7 @@ app.use('/api/v1/family', familyRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/barcode', barcodeRoutes);
 app.use('/api/v1/search', searchRoutes);
+app.use('/api/v1/location', locationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

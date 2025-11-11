@@ -1,4 +1,4 @@
-package com.warrantymanager
+package com.stefankuburovic.warrantyapp
 
 import android.os.Build
 import android.os.Bundle
