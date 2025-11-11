@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { productsApi } from '../api/products';
+import Logo from '../components/Logo';
 
 export default function HomeScreen({ navigation, route }) {
   const { t } = useTranslation();
@@ -15,6 +16,7 @@ export default function HomeScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const isInitialMount = useRef(true);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -166,31 +168,33 @@ export default function HomeScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <Appbar.Header style={styles.appBar}>
-        <Appbar.Action 
-          icon="account-group" 
-          onPress={() => navigation.navigate('Family')}
-        />
-        <Appbar.Action 
-          icon="file-export" 
-          onPress={() => navigation.navigate('Export')}
-        />
-        <Appbar.Action 
-          icon="text-recognition" 
-          onPress={() => navigation.navigate('OCRScanner')}
-        />
-        <Appbar.Action 
-          icon="bell" 
-          onPress={() => navigation.navigate('NotificationSettings')}
-        />
-        <Appbar.Action 
-          icon="chart-box" 
-          onPress={() => navigation.navigate('Statistics')} 
-        />
-        {/* <Appbar.Action 
-          icon="magnify" 
-          onPress={() => navigation.navigate('Search')} 
-        /> */}
-        <Appbar.Action icon="cog" onPress={() => navigation.navigate('Settings')} />
+        <View style={styles.appBarLeft}>
+          <Appbar.Action 
+            icon="account-group" 
+            size={32}
+            onPress={() => navigation.navigate('Family')}
+          />
+          <Appbar.Action 
+            icon="file-export" 
+            size={32}
+            onPress={() => navigation.navigate('Export')}
+          />
+          </View>
+        <View style={styles.logoContainer}>
+          <Logo size="small" variant="default" useImage={true} rotating={isLoading || refreshing} />
+        </View>
+        <View style={styles.appBarRight}>
+          <Appbar.Action 
+            icon="chart-box" 
+            size={32}
+            onPress={() => navigation.navigate('Statistics')} 
+          />
+          <Appbar.Action 
+            icon="cog" 
+            size={32}
+            onPress={() => navigation.navigate('Settings')} 
+          />
+        </View>
       </Appbar.Header>
 
       <Searchbar
@@ -228,16 +232,44 @@ export default function HomeScreen({ navigation, route }) {
         />
       )}
 
-      <FAB
-        icon="barcode-scan"
-        style={styles.scanFab}
-        onPress={() => navigation.navigate('BarcodeScanner')}
-        label="Scan"
-      />
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddProduct')}
+      <FAB.Group
+        open={fabOpen}
+        visible={true}
+        icon={fabOpen ? 'close' : 'plus'}
+        actions={[
+          {
+            icon: 'text-recognition',
+            label: t('ocr.scanReceipt'),
+            onPress: () => {
+              setFabOpen(false);
+              navigation.navigate('OCRScanner');
+            },
+          },
+          {
+            icon: 'barcode-scan',
+            label: t('home.scanBarcode'),
+            onPress: () => {
+              setFabOpen(false);
+              navigation.navigate('BarcodeScanner');
+            },
+          },
+          {
+            icon: 'plus',
+            label: t('home.addProduct') || 'Add Product',
+            onPress: () => {
+              setFabOpen(false);
+              navigation.navigate('AddProduct');
+            },
+          },
+        ]}
+        onStateChange={({ open }) => setFabOpen(open)}
+        onPress={() => {
+          if (fabOpen) {
+            setFabOpen(false);
+          }
+        }}
+        style={styles.fabGroup}
+        fabStyle={styles.fab}
       />
     </View>
   );
@@ -259,9 +291,27 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     paddingVertical: 8,
-    height: 56
+    height: 64
+  },
+  appBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center'
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 0,
+    paddingHorizontal: 4
+  },
+  appBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center'
   },
   searchbar: {
     margin: 16,
@@ -325,18 +375,14 @@ const createStyles = (theme) => StyleSheet.create({
     alignSelf: 'flex-start',
     height: 32
   },
-  scanFab: {
+  fabGroup: {
     position: 'absolute',
-    margin: 16,
     right: 0,
-    bottom: 80,
-    backgroundColor: theme.colors.primary
+    bottom: 0
   },
   fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.fab
+    backgroundColor: theme.colors.fab,
+    marginRight: 16,
+    marginBottom: 16
   }
 });

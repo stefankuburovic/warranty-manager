@@ -16,7 +16,7 @@ export default function OCRScannerScreen({ navigation }) {
   const takePicture = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Camera permission is required');
+      Alert.alert(t('ocr.permissionNeeded'), t('ocr.cameraPermissionRequired'));
       return;
     }
 
@@ -47,7 +47,7 @@ export default function OCRScannerScreen({ navigation }) {
 
   const scanReceipt = async () => {
     if (!image) {
-      Alert.alert('Error', 'Please select an image first');
+      Alert.alert(t('common.error'), t('ocr.selectImage'));
       return;
     }
 
@@ -58,13 +58,13 @@ export default function OCRScannerScreen({ navigation }) {
       
       if (result.confidence < 50) {
         Alert.alert(
-          'Low Confidence',
-          'OCR confidence is low. Please verify the extracted data carefully.'
+          t('ocr.lowConfidence'),
+          t('ocr.lowConfidenceDescription')
         );
       }
     } catch (error) {
       console.error('OCR scan error:', error);
-      Alert.alert('Error', 'Failed to scan receipt. Please try again.');
+      Alert.alert(t('common.error'), t('ocr.scanFailed'));
     } finally {
       setIsProcessing(false);
     }
@@ -72,7 +72,7 @@ export default function OCRScannerScreen({ navigation }) {
 
   const useExtractedData = () => {
     if (!ocrResult || !ocrResult.suggestions) {
-      Alert.alert('Error', 'No data to use');
+      Alert.alert(t('common.error'), t('ocr.noDataToUse'));
       return;
     }
 
@@ -100,10 +100,10 @@ export default function OCRScannerScreen({ navigation }) {
         {!image ? (
           <View style={styles.emptyContainer}>
             <Text variant="headlineSmall" style={styles.emptyTitle}>
-              Scan Your Receipt
+              {t('ocr.scanYourReceipt')}
             </Text>
             <Text variant="bodyMedium" style={styles.emptyText}>
-              Take a photo or choose an existing image of your receipt
+              {t('ocr.scanYourReceiptDescription')}
             </Text>
 
             <Button
@@ -112,7 +112,7 @@ export default function OCRScannerScreen({ navigation }) {
               onPress={takePicture}
               style={styles.actionButton}
             >
-              Take Photo
+              {t('ocr.takePhoto')}
             </Button>
 
             <Button
@@ -121,7 +121,7 @@ export default function OCRScannerScreen({ navigation }) {
               onPress={pickImage}
               style={styles.actionButton}
             >
-              Choose from Gallery
+              {t('ocr.chooseFromGallery')}
             </Button>
           </View>
         ) : (
@@ -138,14 +138,14 @@ export default function OCRScannerScreen({ navigation }) {
                       icon="text-recognition"
                       style={styles.scanButton}
                     >
-                      Scan Receipt
+                      {t('ocr.scanReceiptButton')}
                     </Button>
                     <Button
                       mode="outlined"
                       onPress={retake}
                       style={styles.retakeButton}
                     >
-                      Retake
+                      {t('ocr.retake')}
                     </Button>
                   </View>
                 )}
@@ -157,10 +157,10 @@ export default function OCRScannerScreen({ navigation }) {
                 <Card.Content style={styles.processingContainer}>
                   <ActivityIndicator size="large" />
                   <Text variant="titleMedium" style={styles.processingText}>
-                    Scanning receipt...
+                    {t('ocr.scanning')}
                   </Text>
                   <Text variant="bodySmall" style={styles.processingSubtext}>
-                    This may take a few seconds
+                    {t('ocr.scanningDescription')}
                   </Text>
                 </Card.Content>
               </Card>
@@ -171,7 +171,7 @@ export default function OCRScannerScreen({ navigation }) {
                 <Card style={styles.card}>
                   <Card.Content>
                     <View style={styles.resultHeader}>
-                      <Text variant="titleLarge">Extracted Data</Text>
+                      <Text variant="titleLarge">{t('ocr.extractedData')}</Text>
                       <Chip
                         mode="flat"
                         style={[
@@ -190,13 +190,13 @@ export default function OCRScannerScreen({ navigation }) {
                             theme.colors.error
                         }}
                       >
-                        {ocrResult.confidence}% Confidence
+                        {t('ocr.confidencePercent', { percent: ocrResult.confidence })}
                       </Chip>
                     </View>
 
                     {ocrResult.suggestions?.product_name && (
                       <View style={styles.dataRow}>
-                        <Text style={styles.dataLabel}>Product:</Text>
+                        <Text style={styles.dataLabel}>{t('ocr.product')}:</Text>
                         <Text style={styles.dataValue}>
                           {ocrResult.suggestions.product_name}
                         </Text>
@@ -205,7 +205,7 @@ export default function OCRScannerScreen({ navigation }) {
 
                     {ocrResult.suggestions?.store_name && (
                       <View style={styles.dataRow}>
-                        <Text style={styles.dataLabel}>Store:</Text>
+                        <Text style={styles.dataLabel}>{t('ocr.store')}:</Text>
                         <Text style={styles.dataValue}>
                           {ocrResult.suggestions.store_name}
                         </Text>
@@ -214,16 +214,16 @@ export default function OCRScannerScreen({ navigation }) {
 
                     {ocrResult.suggestions?.purchase_price && (
                       <View style={styles.dataRow}>
-                        <Text style={styles.dataLabel}>Price:</Text>
+                        <Text style={styles.dataLabel}>{t('ocr.price')}:</Text>
                         <Text style={styles.dataValue}>
-                          {ocrResult.suggestions.purchase_price} {ocrResult.suggestions.currency || 'RSD'}
+                          {ocrResult.suggestions.purchase_price} {ocrResult.suggestions.currency || t('currency.RSD')}
                         </Text>
                       </View>
                     )}
 
                     {ocrResult.suggestions?.purchase_date && (
                       <View style={styles.dataRow}>
-                        <Text style={styles.dataLabel}>Date:</Text>
+                        <Text style={styles.dataLabel}>{t('ocr.date')}:</Text>
                         <Text style={styles.dataValue}>
                           {new Date(ocrResult.suggestions.purchase_date).toLocaleDateString('sr-RS')}
                         </Text>
@@ -236,7 +236,7 @@ export default function OCRScannerScreen({ navigation }) {
                       icon="check"
                       style={styles.useButton}
                     >
-                      Use This Data
+                      {t('ocr.useThisData')}
                     </Button>
 
                     <Button
@@ -244,7 +244,7 @@ export default function OCRScannerScreen({ navigation }) {
                       onPress={retake}
                       style={styles.retakeButton}
                     >
-                      Scan Another Receipt
+                      {t('ocr.scanAnother')}
                     </Button>
                   </Card.Content>
                 </Card>
@@ -253,12 +253,12 @@ export default function OCRScannerScreen({ navigation }) {
                   <Card style={styles.card}>
                     <Card.Content>
                       <Text variant="titleMedium" style={styles.itemsTitle}>
-                        Detected Items
+                        {t('ocr.detectedItems')}
                       </Text>
                       {ocrResult.extracted_data.items.map((item, index) => (
                         <View key={index} style={styles.itemRow}>
                           <Text style={styles.itemName}>{item.name}</Text>
-                          <Text style={styles.itemPrice}>{item.price} RSD</Text>
+                          <Text style={styles.itemPrice}>{item.price} {t('currency.RSD')}</Text>
                         </View>
                       ))}
                     </Card.Content>
@@ -269,7 +269,7 @@ export default function OCRScannerScreen({ navigation }) {
                   <Card style={styles.card}>
                     <Card.Content>
                       <Text variant="titleMedium" style={styles.rawTextTitle}>
-                        Raw OCR Text
+                        {t('ocr.rawText')}
                       </Text>
                       <Text variant="bodySmall" style={styles.rawText}>
                         {ocrResult.raw_text}

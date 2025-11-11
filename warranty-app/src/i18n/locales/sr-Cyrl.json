@@ -34,6 +34,7 @@
     "noWarrantiesDescription": "Додајте први производ да започнете праћење гаранција",
     "addProduct": "Додај производ",
     "scanReceipt": "Скенирај рачун",
+    "scanBarcode": "Скенирај баркод",
     "notifications": "Обавештења",
     "statistics": "Статистика",
     "settings": "Подешавања"
@@ -137,11 +138,17 @@
   "ocr": {
     "title": "Скенирај рачун",
     "scanReceipt": "Скенирај рачун",
+    "scanYourReceipt": "Скенирајте ваш рачун",
+    "scanYourReceiptDescription": "Усликајте фотографију или изаберите постојећу слику вашег рачуна",
+    "takePhoto": "Усликај фотографију",
+    "chooseFromGallery": "Изабери из галерије",
+    "scanReceiptButton": "Скенирај рачун",
     "scanning": "Скенирање рачуна...",
     "scanningDescription": "Ово може потрајати неколико секунди",
     "scanAnother": "Скенирај нови рачун",
     "extractedData": "Извучени подаци",
     "confidence": "Поузданост",
+    "confidencePercent": "{{percent}}% Поузданост",
     "lowConfidence": "Ниска поузданост",
     "lowConfidenceDescription": "Поузданост OCR-а је ниска. Молимо пажљиво проверите извучене податке.",
     "useThisData": "Користи ове податке",
@@ -152,7 +159,14 @@
     "noTextDetected": "Текст није откривен на слици",
     "scanFailed": "Скенирање рачуна није успело. Покушајте поново.",
     "retake": "Понови",
-    "selectImage": "Молимо прво изаберите слику"
+    "selectImage": "Молимо прво изаберите слику",
+    "permissionNeeded": "Потребна дозвола",
+    "cameraPermissionRequired": "Потребна је дозвола за камеру",
+    "noDataToUse": "Нема података за коришћење",
+    "product": "Производ",
+    "store": "Продавница",
+    "price": "Цена",
+    "date": "Датум"
   },
   "notification": {
     "title": "Обавештења",

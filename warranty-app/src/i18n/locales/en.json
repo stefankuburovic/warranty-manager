@@ -61,6 +61,7 @@
     "noWarrantiesDescription": "Add your first product to start tracking warranties",
     "addProduct": "Add Product",
     "scanReceipt": "Scan Receipt",
+    "scanBarcode": "Scan Barcode",
     "notifications": "Notifications",
     "statistics": "Statistics",
     "settings": "Settings"
@@ -164,11 +165,17 @@
   "ocr": {
     "title": "Scan Receipt",
     "scanReceipt": "Scan Receipt",
+    "scanYourReceipt": "Scan Your Receipt",
+    "scanYourReceiptDescription": "Take a photo or choose an existing image of your receipt",
+    "takePhoto": "Take Photo",
+    "chooseFromGallery": "Choose from Gallery",
+    "scanReceiptButton": "Scan Receipt",
     "scanning": "Scanning receipt...",
     "scanningDescription": "This may take a few seconds",
     "scanAnother": "Scan Another Receipt",
     "extractedData": "Extracted Data",
     "confidence": "Confidence",
+    "confidencePercent": "{{percent}}% Confidence",
     "lowConfidence": "Low Confidence",
     "lowConfidenceDescription": "OCR confidence is low. Please verify the extracted data carefully.",
     "useThisData": "Use This Data",
@@ -179,7 +186,14 @@
     "noTextDetected": "No text detected in image",
     "scanFailed": "Failed to scan receipt. Please try again.",
     "retake": "Retake",
-    "selectImage": "Please select an image first"
+    "selectImage": "Please select an image first",
+    "permissionNeeded": "Permission needed",
+    "cameraPermissionRequired": "Camera permission is required",
+    "noDataToUse": "No data to use",
+    "product": "Product",
+    "store": "Store",
+    "price": "Price",
+    "date": "Date"
   },
   "notification": {
     "title": "Notifications",

@@ -1,0 +1,20 @@
+<svg width="56" height="40" viewBox="0 0 56 40" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners -->
+  <rect x="0" y="0" width="56" height="40" rx="10" ry="10" fill="#9570CF"/>
+  
+  <!-- WM Text -->
+  <text 
+    x="28" 
+    y="24" 
+    font-size="20" 
+    font-weight="bold" 
+    fill="#FFFFFF" 
+    text-anchor="middle" 
+    dominant-baseline="middle"
+    font-family="Arial, sans-serif"
+    letter-spacing="1.5"
+  >
+    WM
+  </text>
+</svg>
+
