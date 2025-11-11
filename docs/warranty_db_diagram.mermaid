@@ -1,0 +1,79 @@
+erDiagram
+    USERS ||--o{ PRODUCTS : owns
+    USERS {
+        int user_id PK
+        string email UK
+        string password_hash
+        string full_name
+        string phone_number
+        datetime created_at
+        datetime updated_at
+    }
+    
+    STORES ||--o{ PRODUCTS : "sold at"
+    STORES {
+        int store_id PK
+        string store_name
+        string store_chain
+        string address
+        string city
+        string phone
+        string website
+        string logo_url
+        datetime created_at
+    }
+    
+    CATEGORIES ||--o{ PRODUCTS : categorizes
+    CATEGORIES {
+        int category_id PK
+        string category_name UK
+        string icon_name
+        int default_warranty_months
+        string description
+    }
+    
+    PRODUCTS ||--o{ DOCUMENTS : "has documents"
+    PRODUCTS ||--o{ WARRANTY_ALERTS : "has alerts"
+    PRODUCTS {
+        int product_id PK
+        int user_id FK
+        int store_id FK
+        int category_id FK
+        string product_name
+        string brand
+        string model_number
+        string serial_number
+        date purchase_date
+        decimal purchase_price
+        string currency
+        int warranty_duration_months
+        date warranty_start_date
+        date warranty_end_date
+        text notes
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+    
+    DOCUMENTS {
+        int document_id PK
+        int product_id FK
+        string document_type
+        string cloud_storage_url
+        string file_name
+        int file_size
+        string mime_type
+        string thumbnail_url
+        datetime upload_date
+        boolean is_primary
+    }
+    
+    WARRANTY_ALERTS {
+        int alert_id PK
+        int product_id FK
+        date alert_date
+        string alert_type
+        boolean is_sent
+        datetime sent_at
+        datetime created_at
+    }

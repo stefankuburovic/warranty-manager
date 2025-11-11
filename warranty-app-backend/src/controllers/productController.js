@@ -1,0 +1,445 @@
+const { Product, Store, Category, Document, User, SharedProduct, FamilyMember } = require('../models');
+const { Op } = require('sequelize');
+
+// Create new product
+exports.createProduct = async (req, res) => {
+  try {
+    const {
+      product_name,
+      brand,
+      model_number,
+      serial_number,
+      barcode,
+      purchase_date,
+      purchase_price,
+      currency,
+      warranty_duration_months,
+      category_id,
+      store_id,
+      notes
+    } = req.body;
+
+    // Validation
+    if (!product_name || !purchase_date) {
+      return res.status(400).json({ 
+        error: 'Product name and purchase date are required' 
+      });
+    }
+
+    // Create product
+    const product = await Product.create({
+      user_id: req.user.user_id,
+      product_name,
+      brand,
+      model_number,
+      serial_number,
+      barcode,
+      purchase_date,
+      purchase_price,
+      currency: currency || 'RSD',
+      warranty_duration_months: warranty_duration_months || 12,
+      category_id,
+      store_id,
+      notes
+    });
+
+    // Fetch complete product with associations
+    const completeProduct = await Product.findByPk(product.product_id, {
+      include: [
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
+      ]
+    });
+
+    res.status(201).json({
+      message: 'Product created successfully',
+      product: completeProduct
+    });
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ error: 'Failed to create product' });
+  }
+};
+
+// Get all products for user
+exports.getProducts = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      category, 
+      status, 
+      sort = 'purchase_date',
+      order = 'DESC',
+      search
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+    const where = { user_id: req.user.user_id };
+
+    // Filter by category
+    if (category) {
+      where.category_id = category;
+    }
+
+    // Filter by status (active/expired)
+    if (status === 'active') {
+      where.warranty_end_date = { [Op.gte]: new Date() };
+      where.is_active = true;
+    } else if (status === 'expired') {
+      where.warranty_end_date = { [Op.lt]: new Date() };
+    } else if (status === 'inactive') {
+      where.is_active = false;
+    }
+
+    // Search functionality
+    if (search) {
+      where[Op.or] = [
+        { product_name: { [Op.iLike]: `%${search}%` } },
+        { brand: { [Op.iLike]: `%${search}%` } },
+        { model_number: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    // Optimize query: separate count and data queries, remove Document include from main query
+    // Documents can be loaded separately if needed (they're only used for thumbnails)
+    const { count, rows } = await Product.findAndCountAll({
+      where,
+      include: [
+        { 
+          model: Store, 
+          attributes: ['store_id', 'store_name', 'store_chain', 'city'],
+          required: false
+        },
+        { 
+          model: Category, 
+          attributes: ['category_id', 'category_name', 'icon_name'],
+          required: false
+        }
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [[sort, order]],
+      distinct: true // Important: prevents duplicate counting when using includes
+    });
+
+    res.json({
+      products: rows,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit),
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get products error:', error);
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+};
+
+// Get single product by ID
+exports.getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findOne({
+      where: { 
+        product_id: id,
+        user_id: req.user.user_id 
+      },
+      include: [
+        { 
+          model: Store, 
+          attributes: ['store_id', 'store_name', 'store_chain', 'address', 'city', 'phone', 'website'] 
+        },
+        { 
+          model: Category, 
+          attributes: ['category_id', 'category_name', 'icon_name', 'default_warranty_months'] 
+        },
+        {
+          model: Document,
+          attributes: ['document_id', 'document_type', 'cloud_storage_url', 'thumbnail_url', 'file_name', 'is_primary', 'upload_date']
+        }
+      ]
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Check if product is shared with family
+    let isShared = false;
+    try {
+      const familyMember = await FamilyMember.findOne({
+        where: { user_id: req.user.user_id }
+      });
+      
+      if (familyMember) {
+        const sharedProduct = await SharedProduct.findOne({
+          where: {
+            product_id: id,
+            family_id: familyMember.family_id,
+            shared_by: req.user.user_id
+          }
+        });
+        isShared = !!sharedProduct;
+      }
+    } catch (error) {
+      console.error('Error checking shared status:', error);
+      // Continue without shared status if check fails
+    }
+
+    // Calculate warranty status
+    const today = new Date();
+    const warrantyEnd = new Date(product.warranty_end_date);
+    const daysRemaining = Math.ceil((warrantyEnd - today) / (1000 * 60 * 60 * 24));
+    
+    const productData = product.toJSON();
+    productData.warranty_status = {
+      is_expired: daysRemaining < 0,
+      days_remaining: daysRemaining,
+      expires_soon: daysRemaining > 0 && daysRemaining <= 30
+    };
+    productData.is_shared = isShared;
+
+    res.json({ product: productData });
+  } catch (error) {
+    console.error('Get product error:', error);
+    res.status(500).json({ error: 'Failed to fetch product' });
+  }
+};
+
+// Update product
+exports.updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      product_name,
+      brand,
+      model_number,
+      serial_number,
+      barcode,
+      purchase_date,
+      purchase_price,
+      currency,
+      warranty_duration_months,
+      category_id,
+      store_id,
+      notes,
+      is_active
+    } = req.body;
+
+    const product = await Product.findOne({
+      where: { 
+        product_id: id,
+        user_id: req.user.user_id 
+      }
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Update product
+    await product.update({
+      product_name,
+      brand,
+      model_number,
+      serial_number,
+      barcode,
+      purchase_date,
+      purchase_price,
+      currency,
+      warranty_duration_months,
+      category_id,
+      store_id,
+      notes,
+      is_active
+    });
+
+    // Fetch updated product with associations
+    const updatedProduct = await Product.findByPk(product.product_id, {
+      include: [
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
+      ]
+    });
+
+    res.json({
+      message: 'Product updated successfully',
+      product: updatedProduct
+    });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+};
+
+// Delete product
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findOne({
+      where: { 
+        product_id: id,
+        user_id: req.user.user_id 
+      }
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Soft delete - mark as inactive instead of deleting
+    await product.update({ is_active: false });
+
+    // Or hard delete - uncomment this instead
+    // await product.destroy();
+
+    res.json({ 
+      message: 'Product deleted successfully',
+      product_id: id
+    });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ error: 'Failed to delete product' });
+  }
+};
+
+// Get products expiring soon
+exports.getExpiringProducts = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + parseInt(days));
+
+    const products = await Product.findAll({
+      where: {
+        user_id: req.user.user_id,
+        is_active: true,
+        warranty_end_date: {
+          [Op.between]: [today, futureDate]
+        }
+      },
+      include: [
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
+      ],
+      order: [['warranty_end_date', 'ASC']]
+    });
+
+    res.json({ products });
+  } catch (error) {
+    console.error('Get expiring products error:', error);
+    res.status(500).json({ error: 'Failed to fetch expiring products' });
+  }
+};
+
+// Get expired products
+exports.getExpiredProducts = async (req, res) => {
+  try {
+    const today = new Date();
+
+    const products = await Product.findAll({
+      where: {
+        user_id: req.user.user_id,
+        is_active: true,
+        warranty_end_date: {
+          [Op.lt]: today
+        }
+      },
+      include: [
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
+      ],
+      order: [['warranty_end_date', 'DESC']]
+    });
+
+    res.json({ products });
+  } catch (error) {
+    console.error('Get expired products error:', error);
+    res.status(500).json({ error: 'Failed to fetch expired products' });
+  }
+};
+
+// Get product statistics
+exports.getProductStats = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const today = new Date();
+
+    // Total products
+    const totalProducts = await Product.count({
+      where: { user_id: userId, is_active: true }
+    });
+
+    // Active warranties
+    const activeWarranties = await Product.count({
+      where: {
+        user_id: userId,
+        is_active: true,
+        warranty_end_date: { [Op.gte]: today }
+      }
+    });
+
+    // Expired warranties
+    const expiredWarranties = await Product.count({
+      where: {
+        user_id: userId,
+        is_active: true,
+        warranty_end_date: { [Op.lt]: today }
+      }
+    });
+
+    // Total spent
+    const totalSpentResult = await Product.sum('purchase_price', {
+      where: { user_id: userId, is_active: true }
+    });
+
+    // Categories breakdown
+    const categoriesBreakdown = await Product.findAll({
+      where: { user_id: userId, is_active: true },
+      attributes: [
+        'category_id',
+        [Product.sequelize.fn('COUNT', Product.sequelize.col('product_id')), 'count']
+      ],
+      include: [
+        { model: Category, attributes: ['category_name', 'icon_name'] }
+      ],
+      group: ['category_id', 'Category.category_id'],
+      raw: false
+    });
+
+    // Stores breakdown
+    const storesBreakdown = await Product.findAll({
+      where: { user_id: userId, is_active: true },
+      attributes: [
+        'store_id',
+        [Product.sequelize.fn('COUNT', Product.sequelize.col('product_id')), 'count'],
+        [Product.sequelize.fn('SUM', Product.sequelize.col('purchase_price')), 'total_spent']
+      ],
+      include: [
+        { model: Store, attributes: ['store_name', 'store_chain'] }
+      ],
+      group: ['store_id', 'Store.store_id'],
+      raw: false
+    });
+
+    res.json({
+      stats: {
+        total_products: totalProducts,
+        active_warranties: activeWarranties,
+        expired_warranties: expiredWarranties,
+        total_spent: totalSpentResult || 0,
+        categories_breakdown: categoriesBreakdown,
+        stores_breakdown: storesBreakdown
+      }
+    });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+};
