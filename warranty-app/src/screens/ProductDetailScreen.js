@@ -488,7 +488,7 @@ const createStyles = (theme) => StyleSheet.create({
   primaryChip: {
     marginTop: 4,
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.success + '20'
+    backgroundColor: theme.colors.success + '20',
   },
   primaryChipText: {
     color: theme.colors.success

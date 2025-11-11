@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Appbar, List, Divider, Dialog, Portal, RadioButton, Button } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage, getCurrentLanguage, getAvailableLanguages } from '../i18n';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ export default function SettingsScreen({ navigation }) {
   const { t } = useTranslation();
   const { theme, themeMode } = useTheme();
   const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
   const [languageDialogVisible, setLanguageDialogVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(getCurrentLanguage());
 
@@ -72,7 +74,10 @@ export default function SettingsScreen({ navigation }) {
         <Appbar.Content title={t('settings.title')} />
       </Appbar.Header>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}
+      >
         {/* Language Section */}
         <List.Section>
           <List.Subheader>{t('settings.language')}</List.Subheader>
@@ -203,8 +208,12 @@ const createStyles = (theme) => StyleSheet.create({
   content: {
     flex: 1
   },
+  contentContainer: {
+    paddingBottom: 16
+  },
   signOutButton: {
-    marginTop: 16
+    marginTop: 16,
+    marginBottom: 8
   }
 });
 

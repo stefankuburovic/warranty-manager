@@ -58,7 +58,7 @@ export default function Logo({
       borderRadius: fontSize / 4,
       backgroundColor: 'transparent',
       borderWidth: 2,
-      borderColor: theme.colors.primary,
+      borderColor: theme.colors.text,
     },
     gradient: {
       borderRadius: fontSize / 4,
@@ -84,7 +84,7 @@ export default function Logo({
     text: {
       fontSize: fontSize * 0.6,
       fontWeight: 'bold',
-      color: variant === 'outlined' ? theme.colors.primary : '#FFFFFF',
+      color: variant === 'outlined' ? theme.colors.text : '#FFFFFF',
       letterSpacing: 1,
     }
   });

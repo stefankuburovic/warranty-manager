@@ -82,13 +82,23 @@ export const AuthProvider = ({ children }) => {
           
           if (token) {
             // Register token with backend (also with timeout)
-            await Promise.race([
-              notificationsApi.registerToken(token),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Backend registration timeout')), 5000)
-              )
-            ]);
-            console.log('✅ FCM token registered with backend');
+            try {
+              await Promise.race([
+                notificationsApi.registerToken(token),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Backend registration timeout')), 5000)
+                )
+              ]);
+              console.log('✅ FCM token registered with backend');
+            } catch (tokenError) {
+              // Log token registration errors separately
+              console.error('❌ FCM token registration failed:', tokenError.message);
+              if (tokenError.response) {
+                console.error('Response status:', tokenError.response.status);
+                console.error('Response data:', tokenError.response.data);
+              }
+              // Don't throw - notifications are optional
+            }
           }
         } catch (error) {
           // Silently fail - notifications are optional and should never break login

@@ -43,6 +43,8 @@
     "alreadyHaveAccount": "Already have an account?",
     "fillAllFields": "Please fill in all fields",
     "usernameMinLength": "Username must be at least 3 characters",
+    "usernameInvalidChars": "Username can only contain letters, numbers, underscores, and hyphens",
+    "usernameHint": "Only letters, numbers, underscores, and hyphens",
     "passwordMinLength": "Password must be at least 8 characters",
     "passwordsDoNotMatch": "Passwords do not match",
     "passwordRequirements": "Password must be at least 8 characters long",

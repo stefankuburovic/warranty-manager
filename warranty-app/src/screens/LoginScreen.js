@@ -4,38 +4,40 @@ import { Button, Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import Logo from '../components/Logo';
 
 export default function LoginScreen({ navigation }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { signIn, signInWithCredentials, isLoading } = useAuth();
+  const { showToast } = useToast();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    setError('');
-    
     if (!username || !password) {
-      setError(t('auth.fillAllFields'));
+      showToast(t('auth.fillAllFields'), 'error');
       return;
     }
 
     try {
       await signInWithCredentials(username, password);
+      showToast(t('auth.welcome'), 'success');
     } catch (err) {
       console.error('Login error:', err);
+      let errorMessage;
       // Check for timeout errors
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-        setError(t('auth.timeoutError') || 'Connection timeout. Please check your internet connection and try again.');
+        errorMessage = t('error.network');
       } else if (err.response?.status === 401) {
-        setError(t('auth.invalidCredentials') || 'Invalid username or password');
+        errorMessage = err.response?.data?.error || t('auth.loginFailed');
       } else {
-        setError(t('auth.loginFailed') || 'Login failed. Please try again.');
+        errorMessage = err.response?.data?.error || t('auth.loginFailed');
       }
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -88,10 +90,6 @@ export default function LoginScreen({ navigation }) {
             left={<TextInput.Icon icon="lock" />}
             textColor={theme.colors.text}
           />
-
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
 
           <Button
             mode="text"
@@ -175,12 +173,6 @@ const createStyles = (theme) => StyleSheet.create({
   input: {
     marginBottom: 16,
     backgroundColor: theme.colors.surface
-  },
-  errorText: {
-    color: theme.colors.error,
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: 'center'
   },
   forgotButton: {
     alignSelf: 'flex-end',

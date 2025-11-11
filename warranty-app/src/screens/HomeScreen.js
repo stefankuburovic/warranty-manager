@@ -181,7 +181,7 @@ export default function HomeScreen({ navigation, route }) {
           />
           </View>
         <View style={styles.logoContainer}>
-          <Logo size="small" variant="default" useImage={true} rotating={isLoading || refreshing} />
+          <Logo size="small" variant="outlined" animated={isLoading || refreshing} />
         </View>
         <View style={styles.appBarRight}>
           <Appbar.Action 
@@ -283,10 +283,6 @@ const createStyles = (theme) => StyleSheet.create({
   appBar: {
     backgroundColor: theme.colors.appBar,
     elevation: 2,
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',

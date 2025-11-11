@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Button, Text, TextInput, Appbar } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import Logo from '../components/Logo';
 
 export default function RegisterScreen({ navigation }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { register, isLoading } = useAuth();
+  const { showToast } = useToast();
   
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -18,38 +20,43 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
 
   const handleRegister = async () => {
-    setError('');
-
     // Validation
     if (!username || !email || !fullName || !password || !confirmPassword) {
-      setError(t('auth.fillAllFields'));
+      showToast(t('auth.fillAllFields'), 'error');
+      return;
+    }
+
+    // Username validation - check for invalid characters
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      showToast(t('auth.usernameInvalidChars'), 'error');
       return;
     }
 
     if (username.length < 3) {
-      setError(t('auth.usernameMinLength'));
+      showToast(t('auth.usernameMinLength'), 'error');
       return;
     }
 
     if (password.length < 8) {
-      setError(t('auth.passwordMinLength'));
+      showToast(t('auth.passwordMinLength'), 'error');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError(t('auth.passwordsDoNotMatch'));
+      showToast(t('auth.passwordsDoNotMatch'), 'error');
       return;
     }
 
     try {
       await register({ username, email, full_name: fullName, password });
+      showToast(t('auth.registrationSuccess'), 'success');
       // Navigation will happen automatically via AuthContext
       // No need to navigate manually - the app will redirect to Home
     } catch (err) {
-      setError(err.response?.data?.error || t('auth.registrationFailed'));
+      const errorMessage = err.response?.data?.error || t('auth.registrationFailed');
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -85,6 +92,8 @@ export default function RegisterScreen({ navigation }) {
             autoCorrect={false}
             left={<TextInput.Icon icon="account" />}
             textColor={theme.colors.text}
+            helperText={t('auth.usernameHint')}
+            error={username.length > 0 && !/^[a-zA-Z0-9_-]+$/.test(username)}
           />
 
           <TextInput
@@ -144,10 +153,6 @@ export default function RegisterScreen({ navigation }) {
             textColor={theme.colors.text}
           />
 
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
-
           <Text variant="bodySmall" style={styles.hint}>
             {t('auth.passwordRequirements')}
           </Text>
@@ -205,12 +210,6 @@ const createStyles = (theme) => StyleSheet.create({
   input: {
     marginBottom: 16,
     backgroundColor: theme.colors.surface
-  },
-  errorText: {
-    color: theme.colors.error,
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: 'center'
   },
   hint: {
     color: theme.colors.textSecondary,

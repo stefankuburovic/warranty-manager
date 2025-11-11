@@ -95,16 +95,27 @@ exports.register = async (req, res) => {
       stack: error.stack
     });
     
-    // Return more detailed error in development
-    if (process.env.NODE_ENV === 'development') {
-      return res.status(500).json({ 
-        error: 'Registration failed',
-        details: error.message,
-        stack: error.stack
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const errors = error.errors || [];
+      const errorMessage = errors.length > 0 
+        ? errors[0].message 
+        : error.message || 'Validation error';
+      
+      return res.status(400).json({ 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errors.map(e => e.message) : undefined
       });
     }
     
-    res.status(500).json({ error: 'Registration failed' });
+    // Handle other errors
+    const statusCode = error.statusCode || 500;
+    const errorMessage = error.message || 'Registration failed';
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

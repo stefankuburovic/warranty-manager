@@ -13,13 +13,20 @@ exports.registerToken = async (req, res) => {
       return res.status(400).json({ error: 'FCM token is required' });
     }
 
+    // Update user with FCM token
     await req.user.update({ 
       fcm_token,
       notification_enabled: true 
     });
 
-    // Ensure preferences exist
-    await notificationService.getUserPreferences(req.user.user_id);
+    // Ensure preferences exist (wrap in try-catch to not fail token registration)
+    try {
+      await notificationService.getUserPreferences(req.user.user_id);
+    } catch (prefError) {
+      console.error('Warning: Failed to create/get user preferences:', prefError);
+      // Don't fail the token registration if preferences fail
+      // Preferences will be created on next access
+    }
 
     res.json({ 
       message: 'FCM token registered successfully',
@@ -27,7 +34,16 @@ exports.registerToken = async (req, res) => {
     });
   } catch (error) {
     console.error('Register token error:', error);
-    res.status(500).json({ error: 'Failed to register token' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?.user_id,
+      fcmToken: req.body?.fcm_token ? 'present' : 'missing'
+    });
+    res.status(500).json({ 
+      error: 'Failed to register token',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

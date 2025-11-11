@@ -101,7 +101,7 @@ export default function SharedProductsScreen({ navigation }) {
 
             {item.Category && (
               <Chip
-                mode="outlined"
+                mode="flat"
                 style={styles.categoryChip}
                 textStyle={{ fontSize: 11 }}
               >
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic'
   },
   statusChip: {
-    height: 28
+    height: 34
   },
   cardDetails: {
     marginBottom: 8
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     alignSelf: 'flex-start',
-    height: 24
+    height: 32
   }
 });
 
