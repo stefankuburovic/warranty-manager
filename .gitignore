@@ -76,3 +76,15 @@ Thumbs.db
 logs/
 *.log
 
+docs/
+
+warranty-app-backend/firebase-service-account.json
+warranty-app-backend/google-vision-key.json
+warranty-app-backend/google-services.json
+warranty-app-backend/google-services-info.plist
+warranty-app-backend/eng.traineddata
+warranty-app-backend/srp.traineddata
+warranty-app/.env
+warranty-app/.env.*
+warranty-app-backend/.env
+docs/
