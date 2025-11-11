@@ -20,7 +20,7 @@ import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { analyticsApi } from '../api/analytics';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -64,11 +64,11 @@ export default function StatisticsScreen({ navigation }) {
   };
 
   const periods = [
-    { key: '1month', label: '1M' },
-    { key: '3months', label: '3M' },
-    { key: '6months', label: '6M' },
-    { key: '1year', label: '1Y' },
-    { key: 'all', label: t('statistics.all') || 'All' }
+    { key: '1month', label: t('statistics.period1M') },
+    { key: '3months', label: t('statistics.period3M') },
+    { key: '6months', label: t('statistics.period6M') },
+    { key: '1year', label: t('statistics.period1Y') },
+    { key: 'all', label: t('statistics.all') }
   ];
 
   const styles = createStyles(theme, isDark);
@@ -96,7 +96,7 @@ export default function StatisticsScreen({ navigation }) {
           <Appbar.Content title={t('statistics.title')} />
         </Appbar.Header>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>{t('statistics.noData') || 'No data available'}</Text>
+          <Text style={styles.loadingText}>{t('statistics.noData')}</Text>
         </View>
       </View>
     );
@@ -124,7 +124,7 @@ export default function StatisticsScreen({ navigation }) {
 
   const categoryBreakdown = charts?.category_breakdown || [];
   const categoryPieData = categoryBreakdown.slice(0, 5).map((cat, index) => ({
-    name: cat.category_name || 'Unknown',
+    name: cat.category_name || t('statistics.unknown'),
     population: cat.amount || 0,
     color: pieColors[index % pieColors.length],
     legendFontColor: theme.colors.textSecondary,
@@ -183,7 +183,7 @@ export default function StatisticsScreen({ navigation }) {
         <View style={styles.overviewGrid}>
           <Card style={[styles.overviewCard, { backgroundColor: isDark ? '#2C2C3A' : '#E8EAF6' }]}>
             <Card.Content>
-              <Icon name="wallet" size={32} color={theme.colors.primary} />
+              <MaterialCommunityIcons name="wallet" size={32} color={theme.colors.primary} />
               <Text variant="titleLarge" style={styles.overviewValue}>
                 {formatCurrency(overview?.total_spent)}
               </Text>
@@ -195,7 +195,7 @@ export default function StatisticsScreen({ navigation }) {
 
           <Card style={[styles.overviewCard, { backgroundColor: isDark ? '#2C3A2C' : '#E8F5E9' }]}>
             <Card.Content>
-              <Icon name="cart" size={32} color={theme.colors.success} />
+              <MaterialCommunityIcons name="cart" size={32} color={theme.colors.success} />
               <Text variant="titleLarge" style={styles.overviewValue}>
                 {overview?.total_products || 0}
               </Text>
@@ -207,19 +207,19 @@ export default function StatisticsScreen({ navigation }) {
 
           <Card style={[styles.overviewCard, { backgroundColor: isDark ? '#3A3A2C' : '#FFF3E0' }]}>
             <Card.Content>
-              <Icon name="chart-line" size={32} color={theme.colors.warning} />
+              <MaterialCommunityIcons name="chart-line" size={32} color={theme.colors.warning} />
               <Text variant="titleLarge" style={styles.overviewValue}>
                 {formatCurrency(overview?.average_price)}
               </Text>
               <Text variant="bodySmall" style={styles.overviewLabel}>
-                {t('statistics.averagePrice') || 'Avg Price'}
+                {t('statistics.averagePrice')}
               </Text>
             </Card.Content>
           </Card>
 
           <Card style={[styles.overviewCard, { backgroundColor: isDark ? '#3A2C2C' : '#FCE4EC' }]}>
             <Card.Content>
-              <Icon name="shield-check" size={32} color={theme.colors.error} />
+              <MaterialCommunityIcons name="shield-check" size={32} color={theme.colors.error} />
               <Text variant="titleLarge" style={styles.overviewValue}>
                 {overview?.active_warranties || 0}
               </Text>
@@ -236,10 +236,10 @@ export default function StatisticsScreen({ navigation }) {
             <Card.Content>
               <View style={styles.cardHeader}>
                 <Text variant="titleMedium" style={styles.cardTitle}>
-                  {t('statistics.spendingTrend') || 'Spending Trend'}
+                  {t('statistics.spendingTrend')}
                 </Text>
                 <View style={styles.trendBadge}>
-                  <Icon
+                  <MaterialCommunityIcons
                     name={trends.spending_change >= 0 ? 'trending-up' : 'trending-down'}
                     size={16}
                     color={trends.spending_change >= 0 ? theme.colors.success : theme.colors.error}
@@ -272,7 +272,7 @@ export default function StatisticsScreen({ navigation }) {
               <View style={styles.trendInfo}>
                 <View>
                   <Text variant="bodySmall" style={styles.trendInfoLabel}>
-                    {t('statistics.thisMonth') || 'This Month'}
+                    {t('statistics.thisMonth')}
                   </Text>
                   <Text variant="titleSmall" style={styles.trendInfoValue}>
                     {formatCurrency(trends?.last_month_spent)}
@@ -280,7 +280,7 @@ export default function StatisticsScreen({ navigation }) {
                 </View>
                 <View>
                   <Text variant="bodySmall" style={styles.trendInfoLabel}>
-                    {t('statistics.lastMonth') || 'Last Month'}
+                    {t('statistics.lastMonth')}
                   </Text>
                   <Text variant="titleSmall" style={styles.trendInfoValue}>
                     {formatCurrency(trends?.previous_month_spent)}
@@ -355,7 +355,7 @@ export default function StatisticsScreen({ navigation }) {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.cardTitle}>
-                {t('statistics.topStores') || 'Top Stores'}
+                {t('statistics.topStores')}
               </Text>
 
               {charts.store_breakdown.slice(0, 5).map((store, index) => (
@@ -369,7 +369,7 @@ export default function StatisticsScreen({ navigation }) {
                         {store.store_name}
                       </Text>
                       <Text variant="bodySmall" style={styles.storeCount}>
-                        {store.count} {t('statistics.purchases') || 'purchases'}
+                        {store.count} {t('statistics.purchases')}
                       </Text>
                     </View>
                   </View>
@@ -387,17 +387,17 @@ export default function StatisticsScreen({ navigation }) {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.cardTitle}>
-                {t('statistics.insights') || 'Insights'}
+                {t('statistics.insights')}
               </Text>
 
               <View style={styles.insightRow}>
-                <Icon name="star" size={24} color={theme.colors.warning} />
+                <MaterialCommunityIcons name="star" size={24} color={theme.colors.warning} />
                 <View style={styles.insightText}>
                   <Text variant="bodyMedium" style={styles.insightTitle}>
-                    {t('statistics.mostExpensive') || 'Most Expensive Purchase'}
+                    {t('statistics.mostExpensive')}
                   </Text>
                   <Text variant="bodySmall" style={styles.insightDetail}>
-                    {insights.most_expensive_product.product_name || 'Unknown'} •{' '}
+                    {insights.most_expensive_product.product_name || t('statistics.unknown')} •{' '}
                     {formatCurrency(insights.most_expensive_product.price)}
                   </Text>
                 </View>
@@ -405,13 +405,13 @@ export default function StatisticsScreen({ navigation }) {
 
               {insights?.top_category_by_count && (
                 <View style={styles.insightRow}>
-                  <Icon name="trending-up" size={24} color={theme.colors.success} />
+                  <MaterialCommunityIcons name="trending-up" size={24} color={theme.colors.success} />
                   <View style={styles.insightText}>
                     <Text variant="bodyMedium" style={styles.insightTitle}>
-                      {t('statistics.mostPurchased') || 'Most Purchased Category'}
+                      {t('statistics.mostPurchased')}
                     </Text>
                     <Text variant="bodySmall" style={styles.insightDetail}>
-                      {insights.top_category_by_count.category_name || 'Unknown'} •{' '}
+                      {insights.top_category_by_count.category_name || t('statistics.unknown')} •{' '}
                       {insights.top_category_by_count.count || 0} {t('statistics.items')}
                     </Text>
                   </View>
@@ -420,7 +420,7 @@ export default function StatisticsScreen({ navigation }) {
 
               {insights?.top_category_by_value && (
                 <View style={styles.insightRow}>
-                  <Icon name="cash-multiple" size={24} color={theme.colors.error} />
+                  <MaterialCommunityIcons name="cash-multiple" size={24} color={theme.colors.error} />
                   <View style={styles.insightText}>
                     <Text variant="bodyMedium" style={styles.insightTitle}>
                       {t('statistics.highestSpending') || 'Highest Spending Category'}
@@ -497,8 +497,9 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     flexWrap: 'wrap'
   },
   periodChip: {
-    marginRight: 8,
-    marginBottom: 4
+    marginRight: 4,
+    marginBottom: 4,
+    backgroundColor: theme.colors.primary + '20'
   },
   overviewGrid: {
     flexDirection: 'row',
