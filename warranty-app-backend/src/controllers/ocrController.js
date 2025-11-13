@@ -79,13 +79,17 @@ exports.processUploadedReceipt = async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Check if it's an image
-    if (!req.file.mimetype || !req.file.mimetype.startsWith('image/')) {
-      return res.status(400).json({ error: 'File must be an image' });
+    const isPDF = req.file.mimetype === 'application/pdf';
+    const isImage = req.file.mimetype && req.file.mimetype.startsWith('image/');
+
+    if (!isImage && !isPDF) {
+      return res.status(400).json({ error: 'File must be an image or PDF' });
     }
 
-    // Extract data using OCR
-    const ocrResult = await ocrService.extractReceiptData(req.file.buffer);
+    let imageBuffer = req.file.buffer;
+
+    // Extract data using OCR (pass isPDF flag for PDF files)
+    const ocrResult = await ocrService.extractReceiptData(imageBuffer, isPDF);
 
     if (!ocrResult.success) {
       return res.status(500).json({ 
@@ -99,7 +103,7 @@ exports.processUploadedReceipt = async (req, res) => {
       extracted_data: ocrResult.extracted_data,
       confidence: ocrResult.confidence,
       suggestions: {
-        product_name: ocrService.suggestProductName(ocrResult.extracted_data),
+        product_name: ocrResult.extracted_data.product_name || ocrService.suggestProductName(ocrResult.extracted_data),
         purchase_price: ocrResult.extracted_data.total_amount,
         purchase_date: ocrResult.extracted_data.purchase_date,
         store_name: ocrResult.extracted_data.store_name,

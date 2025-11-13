@@ -4,12 +4,15 @@ import { Text, Button, Card, Chip, ActivityIndicator, Appbar } from 'react-nativ
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { ocrApi } from '../api/ocr';
 
 export default function OCRScannerScreen({ navigation }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const [image, setImage] = useState(null);
+  const [fileUri, setFileUri] = useState(null);
+  const [fileType, setFileType] = useState(null); // 'image' or 'pdf'
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
 
@@ -28,6 +31,8 @@ export default function OCRScannerScreen({ navigation }) {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setFileUri(result.assets[0].uri);
+      setFileType('image');
       setOcrResult(null);
     }
   };
@@ -41,19 +46,40 @@ export default function OCRScannerScreen({ navigation }) {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setFileUri(result.assets[0].uri);
+      setFileType('image');
       setOcrResult(null);
     }
   };
 
+  const pickPDF = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setFileUri(result.assets[0].uri);
+        setFileType('pdf');
+        setImage(null); // Clear image preview for PDF
+        setOcrResult(null);
+      }
+    } catch (error) {
+      console.error('Error picking PDF:', error);
+      Alert.alert(t('common.error'), t('ocr.pdfPickFailed') || 'Failed to pick PDF');
+    }
+  };
+
   const scanReceipt = async () => {
-    if (!image) {
-      Alert.alert(t('common.error'), t('ocr.selectImage'));
+    if (!fileUri) {
+      Alert.alert(t('common.error'), t('ocr.selectImage') || 'Please select an image or PDF');
       return;
     }
 
     try {
       setIsProcessing(true);
-      const result = await ocrApi.scanReceipt(image);
+      const result = await ocrApi.scanReceipt(fileUri, fileType);
       setOcrResult(result);
       
       if (result.confidence < 50) {
@@ -78,12 +104,15 @@ export default function OCRScannerScreen({ navigation }) {
 
     navigation.navigate('AddProduct', {
       ocrData: ocrResult.suggestions,
-      receiptImage: image
+      receiptImage: fileType === 'image' ? fileUri : null,
+      receiptPDF: fileType === 'pdf' ? fileUri : null
     });
   };
 
   const retake = () => {
     setImage(null);
+    setFileUri(null);
+    setFileType(null);
     setOcrResult(null);
   };
 
@@ -97,7 +126,7 @@ export default function OCRScannerScreen({ navigation }) {
       </Appbar.Header>
 
       <ScrollView style={styles.content}>
-        {!image ? (
+        {!fileUri ? (
           <View style={styles.emptyContainer}>
             <Text variant="headlineSmall" style={styles.emptyTitle}>
               {t('ocr.scanYourReceipt')}
@@ -123,12 +152,30 @@ export default function OCRScannerScreen({ navigation }) {
             >
               {t('ocr.chooseFromGallery')}
             </Button>
+
+            <Button
+              mode="outlined"
+              icon="file-pdf-box"
+              onPress={pickPDF}
+              style={styles.actionButton}
+            >
+              {t('ocr.choosePDF') || t('document.choosePDF')}
+            </Button>
           </View>
         ) : (
           <>
             <Card style={styles.card}>
               <Card.Content>
-                <Image source={{ uri: image }} style={styles.image} />
+                {fileType === 'pdf' ? (
+                  <View style={styles.pdfPreview}>
+                    <Text style={styles.pdfIcon}>📄</Text>
+                    <Text variant="bodyMedium" style={styles.pdfText}>
+                      {t('document.pdf')} {t('ocr.selected') || 'selected'}
+                    </Text>
+                  </View>
+                ) : (
+                  <Image source={{ uri: image }} style={styles.image} />
+                )}
                 
                 {!ocrResult && !isProcessing && (
                   <View style={styles.actions}>
@@ -173,7 +220,7 @@ export default function OCRScannerScreen({ navigation }) {
                     <View style={styles.resultHeader}>
                       <Text variant="titleLarge">{t('ocr.extractedData')}</Text>
                       <Chip
-                        mode="flat"
+                        mode="outlined"
                         style={[
                           styles.confidenceChip,
                           {
@@ -357,7 +404,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 16
   },
   confidenceChip: {
-    height: 28
+    height: 34
   },
   dataRow: {
     flexDirection: 'row',
@@ -411,6 +458,24 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 4,
     fontSize: 12,
     color: theme.colors.textSecondary
+  },
+  pdfPreview: {
+    width: '100%',
+    height: 300,
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  pdfIcon: {
+    fontSize: 64,
+    marginBottom: 8
+  },
+  pdfText: {
+    color: theme.colors.text
   }
 });
 

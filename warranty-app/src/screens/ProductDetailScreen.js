@@ -78,7 +78,8 @@ export default function ProductDetailScreen({ navigation, route }) {
             try {
               await productsApi.deleteProduct(productId);
               Alert.alert(t('common.success'), t('product.productDeleted'));
-              navigation.goBack();
+              // Navigate back and trigger refresh
+              navigation.navigate('Home', { refresh: true });
             } catch (error) {
               console.error('Error deleting product:', error);
               Alert.alert(t('common.error'), t('product.deleteFailed'));

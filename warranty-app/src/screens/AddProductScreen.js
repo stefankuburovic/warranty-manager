@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { productsApi } from '../api/products';
 import { documentsApi } from '../api/documents';
 import { categoriesApi } from '../api/categories';
+import { storesApi } from '../api/stores';
 import StoreSelector from '../components/StoreSelector';
 import CategorySelector from '../components/CategorySelector';
 import { formatPriceInput, parsePrice } from '../utils/numberHelpers';
@@ -49,6 +50,45 @@ export default function AddProductScreen({ navigation, route }) {
   const [selectedStore, setSelectedStore] = useState(null);
   const [categories, setCategories] = useState([]);
 
+  // Handle store selection/creation from OCR data
+  const handleOCRStoreSelection = async (storeName) => {
+    if (!storeName) return;
+
+    try {
+      // Search for existing stores
+      const storesData = await storesApi.getStores({ search: storeName });
+      const stores = storesData.stores || [];
+      
+      // Try to find exact match (case-insensitive)
+      const exactMatch = stores.find(
+        store => store.store_name.toLowerCase() === storeName.toLowerCase()
+      );
+      
+      if (exactMatch) {
+        // Store exists, select it
+        setSelectedStore(exactMatch.store_id);
+      } else {
+        // Store doesn't exist, create it as custom store
+        try {
+          const result = await storesApi.createStore({
+            store_name: storeName.trim(),
+            is_custom: true
+          });
+          
+          if (result.store) {
+            setSelectedStore(result.store.store_id);
+          }
+        } catch (error) {
+          console.error('Error creating store from OCR:', error);
+          // Don't show error to user, just log it
+        }
+      }
+    } catch (error) {
+      console.error('Error handling OCR store selection:', error);
+      // Don't show error to user, just log it
+    }
+  };
+
   useEffect(() => {
     requestPermissions();
     loadCategories();
@@ -77,6 +117,11 @@ export default function AddProductScreen({ navigation, route }) {
       // Warranty data is already set in state initialization
     }
 
+    // Handle OCR data - store selection/creation
+    if (ocrData?.store_name && !selectedStore) {
+      handleOCRStoreSelection(ocrData.store_name);
+    }
+
     // Show indicator if data was pre-filled
     if (ocrData || scannedData || warrantyData) {
       // Optionally show alert, but don't be too intrusive
@@ -88,7 +133,7 @@ export default function AddProductScreen({ navigation, route }) {
     });
 
     return unsubscribe;
-  }, [navigation, route.params]);
+  }, [navigation, route.params, categories.length]);
 
   const loadCategories = async () => {
     try {
@@ -472,7 +517,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   primaryChip: {
     alignSelf: 'flex-start',
-    height: 24,
+    height: 32,
     backgroundColor: theme.colors.success + '20'
   },
   documentButtons: {

@@ -23,18 +23,14 @@ export default function HomeScreen({ navigation, route }) {
   }, []);
 
   useEffect(() => {
-    // Refresh products when screen is focused (e.g., after adding a product)
+    // Refresh products when screen is focused (e.g., after adding/editing/deleting a product)
     const unsubscribe = navigation.addListener('focus', () => {
-      const refresh = route.params?.refresh;
-      if (refresh) {
-        loadProducts();
-        // Clear the refresh param
-        navigation.setParams({ refresh: false });
-      }
+      // Always refresh when screen comes into focus to ensure list is up to date
+      loadProducts();
     });
 
     return unsubscribe;
-  }, [navigation, route.params]);
+  }, [navigation]);
 
   useEffect(() => {
     // Skip search on initial mount

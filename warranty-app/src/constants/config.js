@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const IP_STORAGE_KEY = '@api_server_ip';
 //192.168.55.94
-const DEFAULT_IP = '192.168.0.26'; // Fallback IP if not set
+const DEFAULT_IP = '192.168.55.94'; // Fallback IP if not set
 const API_PORT = 3000;
 
 /**

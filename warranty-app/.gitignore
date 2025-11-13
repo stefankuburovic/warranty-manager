@@ -49,6 +49,7 @@ fastlane/test_output
 .expo/
 dist/
 web-build/
+android-build/
 
 # Environment
 .env

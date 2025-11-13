@@ -1,5 +1,6 @@
 const { Product, Store, Category, Document, User, SharedProduct, FamilyMember, UserCustomStore } = require('../models');
 const { Op } = require('sequelize');
+const { deleteFile, getSignedUrl } = require('../config/storage');
 
 // Helper function to normalize store data for frontend
 const normalizeStoreData = (product) => {
@@ -270,6 +271,15 @@ exports.getProductById = async (req, res) => {
     };
     productData.is_shared = isShared;
 
+    // Convert document S3 keys to signed URLs for display
+    if (productData.Documents && productData.Documents.length > 0) {
+      productData.Documents = productData.Documents.map(doc => ({
+        ...doc,
+        cloud_storage_url: getSignedUrl(doc.cloud_storage_url),
+        thumbnail_url: doc.thumbnail_url ? getSignedUrl(doc.thumbnail_url) : null
+      }));
+    }
+
     res.json({ product: productData });
   } catch (error) {
     console.error('Get product error:', error);
@@ -393,18 +403,88 @@ exports.deleteProduct = async (req, res) => {
       where: { 
         product_id: id,
         user_id: req.user.user_id 
-      }
+      },
+      include: [{
+        model: Document,
+        attributes: ['document_id', 'cloud_storage_url', 'thumbnail_url']
+      }]
     });
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Soft delete - mark as inactive instead of deleting
-    await product.update({ is_active: false });
+    // Delete all associated documents and their files from S3
+    // First, fetch all documents separately to ensure we get them
+    const documents = await Document.findAll({
+      where: { product_id: id },
+      attributes: ['document_id', 'cloud_storage_url', 'thumbnail_url']
+    });
 
-    // Or hard delete - uncomment this instead
-    // await product.destroy();
+    if (documents && documents.length > 0) {
+      console.log(`Deleting ${documents.length} documents for product ${id}`);
+      
+      for (const document of documents) {
+        try {
+          // Delete main file from S3
+          // cloud_storage_url is stored as S3 key (e.g., "users/123/documents/uuid.pdf")
+          if (document.cloud_storage_url) {
+            // Extract key from URL if it's a full signed URL, otherwise use as-is (it's already a key)
+            let fileKey = document.cloud_storage_url;
+            if (fileKey.includes('amazonaws.com')) {
+              // Extract key from signed URL: https://bucket.s3.region.amazonaws.com/key?signature
+              const urlParts = fileKey.split('.com/');
+              if (urlParts.length > 1) {
+                fileKey = urlParts[1].split('?')[0]; // Remove query parameters
+              }
+            }
+            if (fileKey) {
+              console.log(`Deleting file from S3: ${fileKey}`);
+              const deleted = await deleteFile(fileKey);
+              if (!deleted) {
+                console.warn(`Failed to delete file: ${fileKey}`);
+              }
+            }
+          }
+          
+          // Delete thumbnail from S3
+          // thumbnail_url is also stored as S3 key
+          if (document.thumbnail_url) {
+            let thumbnailKey = document.thumbnail_url;
+            if (thumbnailKey.includes('amazonaws.com')) {
+              const urlParts = thumbnailKey.split('.com/');
+              if (urlParts.length > 1) {
+                thumbnailKey = urlParts[1].split('?')[0];
+              }
+            }
+            if (thumbnailKey) {
+              console.log(`Deleting thumbnail from S3: ${thumbnailKey}`);
+              const deleted = await deleteFile(thumbnailKey);
+              if (!deleted) {
+                console.warn(`Failed to delete thumbnail: ${thumbnailKey}`);
+              }
+            }
+          }
+        } catch (fileError) {
+          console.error(`Error deleting file for document ${document.document_id}:`, fileError);
+          // Continue with other files even if one fails
+        }
+      }
+      
+      // Delete all document records from database
+      const deletedCount = await Document.destroy({
+        where: { product_id: id }
+      });
+      console.log(`Deleted ${deletedCount} document records from database`);
+    }
+
+    // Delete shared product associations
+    await SharedProduct.destroy({
+      where: { product_id: id }
+    });
+
+    // Hard delete the product
+    await product.destroy();
 
     res.json({ 
       message: 'Product deleted successfully',
