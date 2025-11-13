@@ -54,7 +54,9 @@
     "registrationSuccess": "Registracija uspešna! Sada možete koristiti aplikaciju.",
     "registrationFailed": "Registracija nije uspela. Pokušajte ponovo.",
     "loginFailed": "Nevažeći podaci. Pokušajte ponovo.",
-    "logoutConfirm": "Da li ste sigurni da želite da se odjavite?"
+    "logoutConfirm": "Da li ste sigurni da želite da se odjavite?",
+    "sessionExpired": "Sesija je istekla",
+    "sessionExpiredMessage": "Vaša sesija je istekla. Molimo prijavite se ponovo."
   },
   "home": {
     "title": "Moje garancije",
@@ -97,9 +99,14 @@
     "productAdded": "Proizvod je uspešno dodat!",
     "productUpdated": "Proizvod je uspešno ažuriran!",
     "productDeleted": "Proizvod je uspešno obrisan",
+    "deleteFailed": "Brisanje proizvoda nije uspelo",
     "requiredFields": "Molimo popunite obavezna polja",
     "invalidDate": "Molimo unesite validan datum",
-    "loadFailed": "Učitavanje detalja proizvoda nije uspelo"
+    "loadFailed": "Učitavanje detalja proizvoda nije uspelo",
+    "warrantyStatus": "Status garancije",
+    "productDetails": "Detalji proizvoda",
+    "storeInformation": "Informacije o prodavnici",
+    "months": "meseci"
   },
   "categories": {
     "Electronics": "Elektronika",
@@ -135,7 +142,14 @@
     "storeAdded": "Prodavnica je uspešno dodata",
     "storeAddFailed": "Dodavanje prodavnice nije uspelo",
     "noStoresFound": "Nisu pronađene prodavnice",
-    "createNewStore": "Kreiraj novu prodavnicu"
+    "createNewStore": "Kreiraj novu prodavnicu",
+    "enterStoreName": "Unesite naziv prodavnice",
+    "existing": "Postojeće",
+    "mine": "Moje",
+    "searchMyStores": "Pretraži moje prodavnice",
+    "noExistingStores": "Nisu pronađene postojeće prodavnice",
+    "noCustomStores": "Nemate prilagođenih prodavnica",
+    "addNew": "Dodaj novu"
   },
   "document": {
     "title": "Dokumenti",
@@ -161,7 +175,9 @@
     "deleteConfirm": "Da li ste sigurni da želite da obrišete ovaj dokument?",
     "documentUploaded": "Dokument je uspešno otpremljen",
     "documentDeleted": "Dokument je uspešno obrisan",
-    "uploadFailed": "Otpremanje dokumenta nije uspelo"
+    "uploadFailed": "Otpremanje dokumenta nije uspelo",
+    "manage": "Upravljaj",
+    "viewAllDocuments": "Prikaži svih {{count}} dokumenata"
   },
   "ocr": {
     "title": "Skeniraj račun",
@@ -306,6 +322,40 @@
       "sampleCard": "Primer kartice",
       "sampleText": "Ovako će tekst izgledati u izabranoj temi"
     }
+  },
+  "profile": {
+    "loadFailed": "Učitavanje profila nije uspelo",
+    "profileUpdated": "Profil je uspešno ažuriran",
+    "updateFailed": "Ažuriranje profila nije uspelo",
+    "imagePermissionDenied": "Potrebna je dozvola za pristup fotografijama",
+    "cameraPermissionDenied": "Potrebna je dozvola za pristup kameri",
+    "imagePickFailed": "Izabiranje slike nije uspelo",
+    "photoFailed": "Uslikavanje nije uspelo",
+    "changeProfilePicture": "Promeni sliku profila",
+    "accountStatistics": "Statistika naloga",
+    "accountInformation": "Informacije o nalogu",
+    "accountType": "Tip naloga",
+    "googleAccount": "Google nalog",
+    "localAccount": "Lokalni nalog",
+    "emailVerification": "Verifikacija emaila",
+    "verified": "Verifikovano",
+    "notVerified": "Nije verifikovano",
+    "memberSince": "Član od",
+    "lastLogin": "Poslednja prijava",
+    "notAvailable": "Nije dostupno",
+    "security": "Bezbednost",
+    "changePassword": "Promeni lozinku",
+    "changePasswordDescription": "Ažurirajte lozinku vašeg naloga",
+    "googleAccountDescription": "Lozinku upravlja Google",
+    "currentPassword": "Trenutna lozinka",
+    "passwordChanged": "Lozinka je uspešno promenjena",
+    "passwordChangeFailed": "Promena lozinke nije uspela",
+    "fillAllPasswordFields": "Molimo popunite sva polja za lozinku",
+    "accountManagement": "Upravljanje nalogom",
+    "deleteAccount": "Obriši nalog",
+    "deleteAccountConfirm": "Da li ste sigurni da želite da obrišete vaš nalog? Ova akcija se ne može poništiti.",
+    "deleteAccountWarning": "Trajno obrišite vaš nalog i sve podatke",
+    "deleteAccountNotImplemented": "Brisanje naloga još nije implementirano"
   },
   "filter": {
     "filterBy": "Filtriraj po",

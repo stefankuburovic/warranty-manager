@@ -1,5 +1,34 @@
-const { Product, Store, Category, Document, User, SharedProduct, FamilyMember } = require('../models');
+const { Product, Store, Category, Document, User, SharedProduct, FamilyMember, UserCustomStore } = require('../models');
 const { Op } = require('sequelize');
+
+// Helper function to normalize store data for frontend
+const normalizeStoreData = (product) => {
+  const productData = product.toJSON ? product.toJSON() : product;
+  
+  // Priority: Regular Store > UserCustomStore
+  // If product has a regular Store, use it (even if UserCustomStore also exists)
+  if (productData.Store) {
+    productData.Store.type = 'regular';
+    // Remove UserCustomStore reference if Store exists (switched from custom to regular)
+    if (productData.UserCustomStore) {
+      delete productData.UserCustomStore;
+    }
+  } else if (productData.UserCustomStore) {
+    // Only use UserCustomStore if no regular Store exists
+    productData.Store = {
+      store_id: `custom_${productData.UserCustomStore.user_custom_store_id}`,
+      store_name: productData.UserCustomStore.store_name,
+      store_chain: null,
+      city: null,
+      address: null,
+      phone: null,
+      website: null,
+      type: 'custom'
+    };
+  }
+  
+  return productData;
+};
 
 // Create new product
 exports.createProduct = async (req, res) => {
@@ -26,6 +55,28 @@ exports.createProduct = async (req, res) => {
       });
     }
 
+    // Parse store_id - could be regular store_id or custom store (format: "custom_123")
+    let parsedStoreId = null;
+    let parsedUserCustomStoreId = null;
+    
+    if (store_id !== undefined && store_id !== null) {
+      const storeIdStr = String(store_id);
+      
+      if (storeIdStr.startsWith('custom_')) {
+        // It's a custom store
+        const customStoreId = parseInt(storeIdStr.replace('custom_', ''));
+        if (!isNaN(customStoreId)) {
+          parsedUserCustomStoreId = customStoreId;
+        }
+      } else {
+        // It's a regular store
+        const regularStoreId = parseInt(storeIdStr);
+        if (!isNaN(regularStoreId)) {
+          parsedStoreId = regularStoreId;
+        }
+      }
+    }
+
     // Create product
     const product = await Product.create({
       user_id: req.user.user_id,
@@ -39,21 +90,23 @@ exports.createProduct = async (req, res) => {
       currency: currency || 'RSD',
       warranty_duration_months: warranty_duration_months || 12,
       category_id,
-      store_id,
+      store_id: parsedStoreId,
+      user_custom_store_id: parsedUserCustomStoreId,
       notes
     });
 
     // Fetch complete product with associations
     const completeProduct = await Product.findByPk(product.product_id, {
       include: [
-        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'], required: false },
+        { model: UserCustomStore, attributes: ['user_custom_store_id', 'store_name'], required: false },
         { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
       ]
     });
 
     res.status(201).json({
       message: 'Product created successfully',
-      product: completeProduct
+      product: normalizeStoreData(completeProduct)
     });
   } catch (error) {
     console.error('Create product error:', error);
@@ -112,6 +165,11 @@ exports.getProducts = async (req, res) => {
           required: false
         },
         { 
+          model: UserCustomStore, 
+          attributes: ['user_custom_store_id', 'store_name'],
+          required: false
+        },
+        { 
           model: Category, 
           attributes: ['category_id', 'category_name', 'icon_name'],
           required: false
@@ -123,8 +181,11 @@ exports.getProducts = async (req, res) => {
       distinct: true // Important: prevents duplicate counting when using includes
     });
 
+    // Normalize store data for all products
+    const normalizedProducts = rows.map(normalizeStoreData);
+
     res.json({
-      products: rows,
+      products: normalizedProducts,
       pagination: {
         total: count,
         page: parseInt(page),
@@ -151,7 +212,13 @@ exports.getProductById = async (req, res) => {
       include: [
         { 
           model: Store, 
-          attributes: ['store_id', 'store_name', 'store_chain', 'address', 'city', 'phone', 'website'] 
+          attributes: ['store_id', 'store_name', 'store_chain', 'address', 'city', 'phone', 'website'],
+          required: false
+        },
+        { 
+          model: UserCustomStore, 
+          attributes: ['user_custom_store_id', 'store_name'],
+          required: false
         },
         { 
           model: Category, 
@@ -195,7 +262,7 @@ exports.getProductById = async (req, res) => {
     const warrantyEnd = new Date(product.warranty_end_date);
     const daysRemaining = Math.ceil((warrantyEnd - today) / (1000 * 60 * 60 * 24));
     
-    const productData = product.toJSON();
+    const productData = normalizeStoreData(product);
     productData.warranty_status = {
       is_expired: daysRemaining < 0,
       days_remaining: daysRemaining,
@@ -241,8 +308,38 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
+    // Parse store_id - could be regular store_id or custom store (format: "custom_123")
+    let parsedStoreId = null;
+    let parsedUserCustomStoreId = null;
+    
+    if (store_id !== undefined) {
+      if (store_id === null || store_id === '') {
+        // Explicitly clear store
+        parsedStoreId = null;
+        parsedUserCustomStoreId = null;
+      } else {
+        const storeIdStr = String(store_id);
+        
+        if (storeIdStr.startsWith('custom_')) {
+          // It's a custom store
+          const customStoreId = parseInt(storeIdStr.replace('custom_', ''));
+          if (!isNaN(customStoreId)) {
+            parsedUserCustomStoreId = customStoreId;
+            parsedStoreId = null; // Clear regular store
+          }
+        } else {
+          // It's a regular store - handle both number and string
+          const regularStoreId = typeof store_id === 'number' ? store_id : parseInt(storeIdStr);
+          if (!isNaN(regularStoreId) && regularStoreId !== null && regularStoreId >= 0) {
+            parsedStoreId = regularStoreId;
+            parsedUserCustomStoreId = null; // Clear custom store
+          }
+        }
+      }
+    }
+
     // Update product
-    await product.update({
+    const updateData = {
       product_name,
       brand,
       model_number,
@@ -253,22 +350,33 @@ exports.updateProduct = async (req, res) => {
       currency,
       warranty_duration_months,
       category_id,
-      store_id,
       notes,
       is_active
-    });
+    };
+
+    // Always update store fields if store_id was provided (even if null to clear)
+    if (store_id !== undefined) {
+      updateData.store_id = parsedStoreId;
+      updateData.user_custom_store_id = parsedUserCustomStoreId;
+    } else {
+      // If store_id is not provided, don't change existing store
+      // This allows partial updates without affecting store
+    }
+
+    await product.update(updateData);
 
     // Fetch updated product with associations
     const updatedProduct = await Product.findByPk(product.product_id, {
       include: [
-        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'], required: false },
+        { model: UserCustomStore, attributes: ['user_custom_store_id', 'store_name'], required: false },
         { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
       ]
     });
 
     res.json({
       message: 'Product updated successfully',
-      product: updatedProduct
+      product: normalizeStoreData(updatedProduct)
     });
   } catch (error) {
     console.error('Update product error:', error);
@@ -325,13 +433,15 @@ exports.getExpiringProducts = async (req, res) => {
         }
       },
       include: [
-        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'], required: false },
+        { model: UserCustomStore, attributes: ['user_custom_store_id', 'store_name'], required: false },
         { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
       ],
       order: [['warranty_end_date', 'ASC']]
     });
 
-    res.json({ products });
+    const normalizedProducts = products.map(normalizeStoreData);
+    res.json({ products: normalizedProducts });
   } catch (error) {
     console.error('Get expiring products error:', error);
     res.status(500).json({ error: 'Failed to fetch expiring products' });
@@ -352,13 +462,15 @@ exports.getExpiredProducts = async (req, res) => {
         }
       },
       include: [
-        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'] },
+        { model: Store, attributes: ['store_id', 'store_name', 'store_chain'], required: false },
+        { model: UserCustomStore, attributes: ['user_custom_store_id', 'store_name'], required: false },
         { model: Category, attributes: ['category_id', 'category_name', 'icon_name'] }
       ],
       order: [['warranty_end_date', 'DESC']]
     });
 
-    res.json({ products });
+    const normalizedProducts = products.map(normalizeStoreData);
+    res.json({ products: normalizedProducts });
   } catch (error) {
     console.error('Get expired products error:', error);
     res.status(500).json({ error: 'Failed to fetch expired products' });
@@ -403,13 +515,13 @@ exports.getProductStats = async (req, res) => {
     const categoriesBreakdown = await Product.findAll({
       where: { user_id: userId, is_active: true },
       attributes: [
-        'category_id',
-        [Product.sequelize.fn('COUNT', Product.sequelize.col('product_id')), 'count']
+        [Product.sequelize.col('Product.category_id'), 'category_id'],
+        [Product.sequelize.fn('COUNT', Product.sequelize.col('Product.product_id')), 'count']
       ],
       include: [
         { model: Category, attributes: ['category_name', 'icon_name'] }
       ],
-      group: ['category_id', 'Category.category_id'],
+      group: [Product.sequelize.col('Product.category_id'), Product.sequelize.col('Category.category_id')],
       raw: false
     });
 
@@ -417,14 +529,14 @@ exports.getProductStats = async (req, res) => {
     const storesBreakdown = await Product.findAll({
       where: { user_id: userId, is_active: true },
       attributes: [
-        'store_id',
-        [Product.sequelize.fn('COUNT', Product.sequelize.col('product_id')), 'count'],
-        [Product.sequelize.fn('SUM', Product.sequelize.col('purchase_price')), 'total_spent']
+        [Product.sequelize.col('Product.store_id'), 'store_id'],
+        [Product.sequelize.fn('COUNT', Product.sequelize.col('Product.product_id')), 'count'],
+        [Product.sequelize.fn('SUM', Product.sequelize.col('Product.purchase_price')), 'total_spent']
       ],
       include: [
         { model: Store, attributes: ['store_name', 'store_chain'] }
       ],
-      group: ['store_id', 'Store.store_id'],
+      group: [Product.sequelize.col('Product.store_id'), Product.sequelize.col('Store.store_id')],
       raw: false
     });
 

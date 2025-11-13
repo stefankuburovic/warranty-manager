@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 import { TextInput, Text, Button, Portal, Dialog } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
 
@@ -27,6 +27,8 @@ export default function Autocomplete({
   const [newItem, setNewItem] = useState({});
   const [isCreating, setIsCreating] = useState(false);
   const searchTimeoutRef = useRef(null);
+  const inputRef = useRef(null);
+  const [inputLayout, setInputLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   useEffect(() => {
     // Set initial input value from selected option when options are loaded
@@ -102,80 +104,133 @@ export default function Autocomplete({
 
   return (
     <View style={[styles.container, style]}>
-      <TextInput
-        label={label}
-        value={inputValue}
-        onChangeText={handleInputChange}
-        onFocus={() => {
-          if (inputValue.trim() || options.length > 0) {
-            setShowSuggestions(true);
-          }
+      <View
+        ref={inputRef}
+        onLayout={() => {
+          inputRef.current?.measureInWindow((x, y, width, height) => {
+            setInputLayout({ x, y, width, height });
+          });
         }}
-        onBlur={() => {
-          // Delay hiding to allow selection
-          setTimeout(() => {
-            setShowSuggestions(false);
-            // If input doesn't match selected value, try to restore it
-            if (value && options.length > 0) {
-              const selected = options.find(opt => getOptionValue(opt) === value);
-              if (selected && inputValue !== getOptionLabel(selected)) {
-                setInputValue(getOptionLabel(selected));
-              }
+      >
+        <TextInput
+          label={label}
+          value={inputValue}
+          onChangeText={handleInputChange}
+          onFocus={() => {
+            inputRef.current?.measureInWindow((x, y, width, height) => {
+              setInputLayout({ x, y, width, height });
+            });
+            if (inputValue.trim() || options.length > 0) {
+              setShowSuggestions(true);
             }
-          }, 200);
-        }}
-        mode="outlined"
-        placeholder={placeholder}
-        style={styles.input}
-        right={
-          <TextInput.Icon
-            icon={showSuggestions ? 'chevron-up' : 'chevron-down'}
-            onPress={() => {
-              if (options.length > 0) {
-                setShowSuggestions(!showSuggestions);
+          }}
+          onBlur={() => {
+            // Delay hiding to allow selection
+            setTimeout(() => {
+              setShowSuggestions(false);
+              // If input doesn't match selected value, try to restore it
+              if (value && options.length > 0) {
+                const selected = options.find(opt => getOptionValue(opt) === value);
+                if (selected && inputValue !== getOptionLabel(selected)) {
+                  setInputValue(getOptionLabel(selected));
+                }
               }
-            }}
-          />
-        }
-      />
+            }, 200);
+          }}
+          mode="outlined"
+          placeholder={placeholder}
+          style={styles.input}
+          right={
+            <TextInput.Icon
+              icon={showSuggestions ? 'chevron-up' : 'chevron-down'}
+              onPress={() => {
+                if (options.length > 0) {
+                  inputRef.current?.measureInWindow((x, y, width, height) => {
+                    setInputLayout({ x, y, width, height });
+                  });
+                  setShowSuggestions(!showSuggestions);
+                }
+              }}
+            />
+          }
+        />
+      </View>
 
-      {showSuggestions && (filteredOptions.length > 0 || (!inputValue.trim() && options.length > 0)) && (
-        <View style={styles.suggestionsContainer}>
-          <ScrollView
-            style={styles.suggestionsList}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-          >
-            {(inputValue.trim() ? filteredOptions : options.slice(0, 10)).map((item) => (
-              <TouchableOpacity
-                key={getOptionValue(item).toString()}
-                style={styles.suggestionItem}
-                onPress={() => handleSelect(item)}
+      <Modal
+        visible={showSuggestions && (filteredOptions.length > 0 || (!inputValue.trim() && options.length > 0))}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setShowSuggestions(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.suggestionsContainer,
+                {
+                  top: inputLayout.y + inputLayout.height + 4,
+                  left: inputLayout.x,
+                  width: inputLayout.width,
+                }
+              ]}
+              onStartShouldSetResponder={() => true}
+            >
+              <ScrollView
+                style={styles.suggestionsList}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
               >
-                <Text style={styles.suggestionText}>
-                  {getOptionLabel(item)}
+                {(inputValue.trim() ? filteredOptions : options.slice(0, 10)).map((item) => (
+                  <TouchableOpacity
+                    key={getOptionValue(item).toString()}
+                    style={styles.suggestionItem}
+                    onPress={() => handleSelect(item)}
+                  >
+                    <Text style={styles.suggestionText}>
+                      {getOptionLabel(item)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
+        visible={showSuggestions && filteredOptions.length === 0 && inputValue.trim() && allowCreate}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setShowSuggestions(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.suggestionsContainer,
+                {
+                  top: inputLayout.y + inputLayout.height + 4,
+                  left: inputLayout.x,
+                  width: inputLayout.width,
+                }
+              ]}
+              onStartShouldSetResponder={() => true}
+            >
+              <TouchableOpacity
+                style={styles.createButton}
+                onPress={() => {
+                  setShowSuggestions(false);
+                  setShowCreateDialog(true);
+                }}
+              >
+                <Text style={styles.createButtonText}>
+                  + Create "{inputValue}"
                 </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {showSuggestions && filteredOptions.length === 0 && inputValue.trim() && allowCreate && (
-        <View style={styles.suggestionsContainer}>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => {
-              setShowSuggestions(false);
-              setShowCreateDialog(true);
-            }}
-          >
-            <Text style={styles.createButtonText}>
-              + Create "{inputValue}"
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {allowCreate && createFormFields && (
         <Portal>
@@ -216,23 +271,22 @@ const createStyles = (theme) => StyleSheet.create({
   input: {
     backgroundColor: theme.colors.surface
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent'
+  },
   suggestionsContainer: {
     position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
     backgroundColor: theme.colors.surface,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: theme.colors.border,
     maxHeight: 200,
-    zIndex: 9999,
-    elevation: 5,
-    shadowColor: theme.colors.shadow,
+    elevation: 10,
+    shadowColor: theme.colors.shadow || '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    marginTop: 4
   },
   suggestionsList: {
     maxHeight: 200

@@ -1,6 +1,34 @@
 const pdfService = require('../services/pdfService');
-const { Product, Store, Category, Document } = require('../models');
+const { Product, Store, Category, Document, UserCustomStore } = require('../models');
 const { Op } = require('sequelize');
+const { normalizeLanguage } = require('../utils/pdfTranslations');
+
+// Helper function to normalize store data for PDF (similar to productController)
+const normalizeStoreDataForPDF = (product) => {
+  const productData = product.toJSON ? product.toJSON() : product;
+  
+  // Priority: Regular Store > UserCustomStore
+  if (productData.Store) {
+    productData.Store.type = 'regular';
+    if (productData.UserCustomStore) {
+      delete productData.UserCustomStore;
+    }
+  } else if (productData.UserCustomStore) {
+    // Only use UserCustomStore if no regular Store exists
+    productData.Store = {
+      store_id: `custom_${productData.UserCustomStore.user_custom_store_id}`,
+      store_name: productData.UserCustomStore.store_name,
+      store_chain: null,
+      city: null,
+      address: null,
+      phone: null,
+      website: null,
+      type: 'custom'
+    };
+  }
+  
+  return productData;
+};
 
 // Export single product as PDF
 exports.exportProduct = async (req, res) => {
@@ -19,12 +47,17 @@ exports.exportProduct = async (req, res) => {
         user_id: req.user.user_id
       },
       include: [
-        { model: Store },
+        { model: Store, required: false },
         { model: Category },
         { 
           model: Document,
           where: { is_primary: true },
           required: false
+        },
+        { 
+          model: UserCustomStore, 
+          attributes: ['user_custom_store_id', 'store_name'], 
+          required: false 
         }
       ]
     });
@@ -32,6 +65,9 @@ exports.exportProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
+
+    // Normalize store data
+    const normalizedProduct = normalizeStoreDataForPDF(product);
 
     // Prepare user object for PDF generation
     const userForPDF = {
@@ -41,10 +77,14 @@ exports.exportProduct = async (req, res) => {
       username: req.user.username
     };
 
-    console.log('Generating PDF for product:', id, 'User:', userForPDF.email);
+    // Get user's preferred language, default to 'en', and normalize it
+    const rawLanguage = req.user.preferred_language || 'en';
+    const language = normalizeLanguage(rawLanguage);
+
+    console.log('Generating PDF for product:', id, 'User:', userForPDF.email, 'Language:', language, '(raw:', rawLanguage + ')');
 
     // Generate PDF
-    const pdfBuffer = await pdfService.generateProductPDF(product, userForPDF);
+    const pdfBuffer = await pdfService.generateProductPDF(normalizedProduct, userForPDF, language);
 
     // Set headers for PDF download
     const filename = `warranty-${product.product_name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
@@ -75,12 +115,17 @@ exports.exportAllProducts = async (req, res) => {
         is_active: true
       },
       include: [
-        { model: Store },
+        { model: Store, required: false },
         { model: Category },
         { 
           model: Document,
           where: { is_primary: true },
           required: false
+        },
+        { 
+          model: UserCustomStore, 
+          attributes: ['user_custom_store_id', 'store_name'], 
+          required: false 
         }
       ],
       order: [['purchase_date', 'DESC']]
@@ -90,6 +135,9 @@ exports.exportAllProducts = async (req, res) => {
       return res.status(404).json({ error: 'No products to export' });
     }
 
+    // Normalize store data for all products
+    const normalizedProducts = products.map(p => normalizeStoreDataForPDF(p));
+
     // Prepare user object for PDF generation
     const userForPDF = {
       user_id: req.user.user_id,
@@ -98,10 +146,14 @@ exports.exportAllProducts = async (req, res) => {
       username: req.user.username
     };
 
-    console.log('Generating bulk PDF for', products.length, 'products, User:', userForPDF.email);
+    // Get user's preferred language, default to 'en', and normalize it
+    const rawLanguage = req.user.preferred_language || 'en';
+    const language = normalizeLanguage(rawLanguage);
+
+    console.log('Generating bulk PDF for', normalizedProducts.length, 'products, User:', userForPDF.email, 'Language:', language, '(raw:', rawLanguage + ')');
 
     // Generate bulk PDF
-    const pdfBuffer = await pdfService.generateBulkPDF(products, userForPDF);
+    const pdfBuffer = await pdfService.generateBulkPDF(normalizedProducts, userForPDF, language);
 
     // Set headers for PDF download
     const filename = `warranty-report-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -145,12 +197,17 @@ exports.exportFiltered = async (req, res) => {
     const products = await Product.findAll({
       where,
       include: [
-        { model: Store },
+        { model: Store, required: false },
         { model: Category },
         { 
           model: Document,
           where: { is_primary: true },
           required: false
+        },
+        { 
+          model: UserCustomStore, 
+          attributes: ['user_custom_store_id', 'store_name'], 
+          required: false 
         }
       ],
       order: [['purchase_date', 'DESC']]
@@ -160,6 +217,9 @@ exports.exportFiltered = async (req, res) => {
       return res.status(404).json({ error: 'No products match the filter' });
     }
 
+    // Normalize store data for all products
+    const normalizedProducts = products.map(p => normalizeStoreDataForPDF(p));
+
     // Prepare user object for PDF generation
     const userForPDF = {
       user_id: req.user.user_id,
@@ -168,9 +228,13 @@ exports.exportFiltered = async (req, res) => {
       username: req.user.username
     };
 
-    console.log('Generating filtered PDF for', products.length, 'products, User:', userForPDF.email);
+    // Get user's preferred language, default to 'en', and normalize it
+    const rawLanguage = req.user.preferred_language || 'en';
+    const language = normalizeLanguage(rawLanguage);
 
-    const pdfBuffer = await pdfService.generateBulkPDF(products, userForPDF);
+    console.log('Generating filtered PDF for', normalizedProducts.length, 'products, User:', userForPDF.email, 'Language:', language, '(raw:', rawLanguage + ')');
+
+    const pdfBuffer = await pdfService.generateBulkPDF(normalizedProducts, userForPDF, language);
 
     const filename = `warranty-${status || 'filtered'}-${new Date().toISOString().split('T')[0]}.pdf`;
     

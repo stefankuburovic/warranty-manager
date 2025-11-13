@@ -55,7 +55,9 @@
     "registrationSuccess": "Registration successful! You can now use the app.",
     "registrationFailed": "Registration failed. Please try again.",
     "loginFailed": "Invalid credentials. Please try again.",
-    "logoutConfirm": "Are you sure you want to sign out?"
+    "logoutConfirm": "Are you sure you want to sign out?",
+    "sessionExpired": "Session Expired",
+    "sessionExpiredMessage": "Your session has expired. Please sign in again."
   },
   "home": {
     "title": "My Warranties",
@@ -98,9 +100,14 @@
     "productAdded": "Product added successfully!",
     "productUpdated": "Product updated successfully!",
     "productDeleted": "Product deleted successfully",
+    "deleteFailed": "Failed to delete product",
     "requiredFields": "Please fill in required fields",
     "invalidDate": "Please enter a valid date",
-    "loadFailed": "Failed to load product details"
+    "loadFailed": "Failed to load product details",
+    "warrantyStatus": "Warranty Status",
+    "productDetails": "Product Details",
+    "storeInformation": "Store Information",
+    "months": "months"
   },
   "categories": {
     "Electronics": "Electronics",
@@ -136,7 +143,14 @@
     "storeAdded": "Store added successfully",
     "storeAddFailed": "Failed to add store",
     "noStoresFound": "No stores found",
-    "createNewStore": "Create New Store"
+    "createNewStore": "Create New Store",
+    "enterStoreName": "Enter store name",
+    "existing": "Existing",
+    "mine": "Mine",
+    "searchMyStores": "Search my stores",
+    "noExistingStores": "No existing stores found",
+    "noCustomStores": "No custom stores found",
+    "addNew": "Add new"
   },
   "document": {
     "title": "Documents",
@@ -162,7 +176,9 @@
     "deleteConfirm": "Are you sure you want to delete this document?",
     "documentUploaded": "Document uploaded successfully",
     "documentDeleted": "Document deleted successfully",
-    "uploadFailed": "Failed to upload document"
+    "uploadFailed": "Failed to upload document",
+    "manage": "Manage",
+    "viewAllDocuments": "View All {{count}} Documents"
   },
   "ocr": {
     "title": "Scan Receipt",
@@ -307,6 +323,40 @@
       "sampleCard": "Sample Card",
       "sampleText": "This is how text will appear in the selected theme"
     }
+  },
+  "profile": {
+    "loadFailed": "Failed to load profile",
+    "profileUpdated": "Profile updated successfully",
+    "updateFailed": "Failed to update profile",
+    "imagePermissionDenied": "Permission to access photos is required",
+    "cameraPermissionDenied": "Permission to access camera is required",
+    "imagePickFailed": "Failed to pick image",
+    "photoFailed": "Failed to take photo",
+    "changeProfilePicture": "Change Profile Picture",
+    "accountStatistics": "Account Statistics",
+    "accountInformation": "Account Information",
+    "accountType": "Account Type",
+    "googleAccount": "Google Account",
+    "localAccount": "Local Account",
+    "emailVerification": "Email Verification",
+    "verified": "Verified",
+    "notVerified": "Not Verified",
+    "memberSince": "Member Since",
+    "lastLogin": "Last Login",
+    "notAvailable": "Not Available",
+    "security": "Security",
+    "changePassword": "Change Password",
+    "changePasswordDescription": "Update your account password",
+    "googleAccountDescription": "Password managed by Google",
+    "currentPassword": "Current Password",
+    "passwordChanged": "Password changed successfully",
+    "passwordChangeFailed": "Failed to change password",
+    "fillAllPasswordFields": "Please fill in all password fields",
+    "accountManagement": "Account Management",
+    "deleteAccount": "Delete Account",
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone.",
+    "deleteAccountWarning": "Permanently delete your account and all data",
+    "deleteAccountNotImplemented": "Account deletion is not yet implemented"
   },
   "filter": {
     "filterBy": "Filter By",

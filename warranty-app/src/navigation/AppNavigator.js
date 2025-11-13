@@ -21,6 +21,7 @@ import NotificationHistoryScreen from '../screens/NotificationHistoryScreen';
 import OCRScannerScreen from '../screens/OCRScannerScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import ExportScreen from '../screens/ExportScreen';
 import FamilyScreen from '../screens/FamilyScreen';
 import SharedProductsScreen from '../screens/SharedProductsScreen';
@@ -124,6 +125,11 @@ const AppNavigator = forwardRef((props, ref) => {
             <Stack.Screen 
               name="ThemeSettings" 
               component={ThemeSettingsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Profile" 
+              component={ProfileScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen 

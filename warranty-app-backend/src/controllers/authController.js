@@ -388,3 +388,27 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+// Update profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { full_name, phone_number, profile_picture_url } = req.body;
+    const user = await User.findByPk(req.user.user_id);
+
+    const updateData = {};
+    if (full_name !== undefined) updateData.full_name = full_name;
+    if (phone_number !== undefined) updateData.phone_number = phone_number;
+    if (profile_picture_url !== undefined) updateData.profile_picture_url = profile_picture_url;
+
+    await user.update(updateData);
+
+    const updatedUser = await User.findByPk(req.user.user_id, {
+      attributes: { exclude: ['google_id', 'password_hash', 'reset_token', 'verification_token'] }
+    });
+
+    res.json({ user: updatedUser, message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+

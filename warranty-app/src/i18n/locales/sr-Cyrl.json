@@ -99,7 +99,11 @@
     "productDeleted": "Производ је успешно обрисан",
     "requiredFields": "Молимо попуните обавезна поља",
     "invalidDate": "Молимо унесите валидан датум",
-    "loadFailed": "Учитавање детаља производа није успело"
+    "loadFailed": "Учитавање детаља производа није успело",
+    "warrantyStatus": "Статус гаранције",
+    "productDetails": "Детаљи производа",
+    "storeInformation": "Информације о продавници",
+    "months": "месеци"
   },
   "categories": {
     "Electronics": "Електроника",
@@ -306,6 +310,40 @@
       "sampleCard": "Пример картице",
       "sampleText": "Овако ће текст изгледати у изабраној теми"
     }
+  },
+  "profile": {
+    "loadFailed": "Учитавање профила није успело",
+    "profileUpdated": "Профил је успешно ажуриран",
+    "updateFailed": "Ажурирање профила није успело",
+    "imagePermissionDenied": "Потребна је дозвола за приступ фотографијама",
+    "cameraPermissionDenied": "Потребна је дозвола за приступ камери",
+    "imagePickFailed": "Избирање слике није успело",
+    "photoFailed": "Усликавање није успело",
+    "changeProfilePicture": "Промени слику профила",
+    "accountStatistics": "Статистика налога",
+    "accountInformation": "Информације о налогу",
+    "accountType": "Тип налога",
+    "googleAccount": "Google налог",
+    "localAccount": "Локални налог",
+    "emailVerification": "Верификација emaila",
+    "verified": "Верификовано",
+    "notVerified": "Није верификовано",
+    "memberSince": "Члан од",
+    "lastLogin": "Последња пријава",
+    "notAvailable": "Није доступно",
+    "security": "Безбедност",
+    "changePassword": "Промени лозинку",
+    "changePasswordDescription": "Ажурирајте лозинку вашег налога",
+    "googleAccountDescription": "Лозинку управља Google",
+    "currentPassword": "Тренутна лозинка",
+    "passwordChanged": "Лозинка је успешно промењена",
+    "passwordChangeFailed": "Промена лозинке није успела",
+    "fillAllPasswordFields": "Молимо попуните сва поља за лозинку",
+    "accountManagement": "Управљање налогом",
+    "deleteAccount": "Обриши налог",
+    "deleteAccountConfirm": "Да ли сте сигурни да желите да обришете ваш налог? Ова акција се не може поништити.",
+    "deleteAccountWarning": "Трајно обришите ваш налог и све податке",
+    "deleteAccountNotImplemented": "Брисање налога још није имплементирано"
   },
   "filter": {
     "filterBy": "Филтрирај по",

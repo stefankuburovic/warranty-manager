@@ -9,13 +9,20 @@ import { useTheme } from '../context/ThemeContext';
 
 export default function SettingsScreen({ navigation }) {
   const { t } = useTranslation();
-  const { theme, themeMode } = useTheme();
+  const { theme, themeMode, changeTheme } = useTheme();
   const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [languageDialogVisible, setLanguageDialogVisible] = useState(false);
+  const [themeDialogVisible, setThemeDialogVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(getCurrentLanguage());
 
   const languages = getAvailableLanguages();
+  
+  const themeOptions = [
+    { value: 'light', label: t('settings.theme.light') },
+    { value: 'dark', label: t('settings.theme.dark') },
+    { value: 'system', label: t('settings.theme.system') }
+  ];
 
   useEffect(() => {
     setSelectedLanguage(getCurrentLanguage());
@@ -26,10 +33,14 @@ export default function SettingsScreen({ navigation }) {
     if (success) {
       setSelectedLanguage(languageCode);
       setLanguageDialogVisible(false);
-      Alert.alert(t('common.success'), t('settings.languageChanged'));
     } else {
       Alert.alert(t('common.error'), t('error.generic'));
     }
+  };
+
+  const handleThemeChange = async (themeValue) => {
+    await changeTheme(themeValue);
+    setThemeDialogVisible(false);
   };
 
   const handleSignOut = () => {
@@ -100,7 +111,7 @@ export default function SettingsScreen({ navigation }) {
             description={getThemeModeLabel()}
             left={props => <List.Icon {...props} icon="theme-light-dark" />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => navigation.navigate('ThemeSettings')}
+            onPress={() => setThemeDialogVisible(true)}
           />
         </List.Section>
 
@@ -113,7 +124,7 @@ export default function SettingsScreen({ navigation }) {
             title={t('settings.profile')}
             left={props => <List.Icon {...props} icon="account" />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
+            onPress={() => navigation.navigate('Profile')}
           />
           <List.Item
             title={t('notification.notificationSettings')}
@@ -130,7 +141,7 @@ export default function SettingsScreen({ navigation }) {
           <List.Subheader>{t('settings.about')}</List.Subheader>
           <List.Item
             title={t('settings.version')}
-            description="1.2.0"
+            description="2.0.0"
             left={props => <List.Icon {...props} icon="information" />}
           />
           <List.Item
@@ -188,6 +199,35 @@ export default function SettingsScreen({ navigation }) {
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setLanguageDialogVisible(false)}>
+              {t('common.cancel')}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Theme Selection Dialog */}
+      <Portal>
+        <Dialog 
+          visible={themeDialogVisible} 
+          onDismiss={() => setThemeDialogVisible(false)}
+        >
+          <Dialog.Title>{t('settings.theme.selectTheme')}</Dialog.Title>
+          <Dialog.Content>
+            <RadioButton.Group 
+              onValueChange={handleThemeChange}
+              value={themeMode}
+            >
+              {themeOptions.map(option => (
+                <RadioButton.Item
+                  key={option.value}
+                  label={option.label}
+                  value={option.value}
+                />
+              ))}
+            </RadioButton.Group>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setThemeDialogVisible(false)}>
               {t('common.cancel')}
             </Button>
           </Dialog.Actions>

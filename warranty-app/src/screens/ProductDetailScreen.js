@@ -7,6 +7,7 @@ import { productsApi } from '../api/products';
 import { exportApi } from '../api/export';
 import { familyApi } from '../api/family';
 import { useAuth } from '../context/AuthContext';
+import { getCurrentLanguage } from '../i18n';
 
 export default function ProductDetailScreen({ navigation, route }) {
   const { t } = useTranslation();
@@ -22,6 +23,14 @@ export default function ProductDetailScreen({ navigation, route }) {
   useEffect(() => {
     loadProduct();
   }, [productId]);
+
+  // Reload product when screen comes into focus (e.g., after editing)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProduct();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const loadProduct = async () => {
     try {
@@ -58,21 +67,21 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Product',
-      'Are you sure you want to delete this product?',
+      t('product.deleteProduct'),
+      t('product.deleteConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await productsApi.deleteProduct(productId);
-              Alert.alert('Success', 'Product deleted successfully');
+              Alert.alert(t('common.success'), t('product.productDeleted'));
               navigation.goBack();
             } catch (error) {
               console.error('Error deleting product:', error);
-              Alert.alert('Error', 'Failed to delete product');
+              Alert.alert(t('common.error'), t('product.deleteFailed'));
             }
           }
         }
@@ -135,8 +144,11 @@ export default function ProductDetailScreen({ navigation, route }) {
     );
   }
 
-  const purchaseDate = new Date(product.purchase_date).toLocaleDateString('sr-RS');
-  const warrantyEndDate = new Date(product.warranty_end_date).toLocaleDateString('sr-RS');
+  // Format dates based on user's language preference
+  const currentLang = getCurrentLanguage();
+  const dateLocale = currentLang.startsWith('sr') ? 'sr-RS' : 'en-US';
+  const purchaseDate = new Date(product.purchase_date).toLocaleDateString(dateLocale);
+  const warrantyEndDate = new Date(product.warranty_end_date).toLocaleDateString(dateLocale);
   const warrantyStatus = product.warranty_status;
 
   return (
@@ -161,7 +173,7 @@ export default function ProductDetailScreen({ navigation, route }) {
         <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.cardTitle}>
-              Warranty Status
+              {t('product.warrantyStatus')}
             </Text>
             <View style={styles.statusContainer}>
               {warrantyStatus.is_expired ? (
@@ -200,33 +212,33 @@ export default function ProductDetailScreen({ navigation, route }) {
         <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.cardTitle}>
-              Product Details
+              {t('product.productDetails')}
             </Text>
             
             {product.brand && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Brand:</Text>
+                <Text style={styles.detailLabel}>{t('product.brand')}:</Text>
                 <Text style={styles.detailValue}>{product.brand}</Text>
               </View>
             )}
 
             {product.model_number && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Model:</Text>
+                <Text style={styles.detailLabel}>{t('product.modelNumber')}:</Text>
                 <Text style={styles.detailValue}>{product.model_number}</Text>
               </View>
             )}
 
             {product.serial_number && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Serial:</Text>
+                <Text style={styles.detailLabel}>{t('product.serialNumber')}:</Text>
                 <Text style={styles.detailValue}>{product.serial_number}</Text>
               </View>
             )}
 
             {product.Category && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Category:</Text>
+                <Text style={styles.detailLabel}>{t('product.category')}:</Text>
                 <Text style={styles.detailValue}>{product.Category.category_name}</Text>
               </View>
             )}
@@ -234,13 +246,13 @@ export default function ProductDetailScreen({ navigation, route }) {
             <Divider style={styles.divider} />
 
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Purchase Date:</Text>
+              <Text style={styles.detailLabel}>{t('product.purchaseDate')}:</Text>
               <Text style={styles.detailValue}>{purchaseDate}</Text>
             </View>
 
             {product.purchase_price && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Purchase Price:</Text>
+                <Text style={styles.detailLabel}>{t('product.purchasePrice')}:</Text>
                 <Text style={styles.detailValue}>
                   {product.purchase_price} {product.currency}
                 </Text>
@@ -248,9 +260,9 @@ export default function ProductDetailScreen({ navigation, route }) {
             )}
 
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Warranty Duration:</Text>
+              <Text style={styles.detailLabel}>{t('product.warrantyDuration')}:</Text>
               <Text style={styles.detailValue}>
-                {product.warranty_duration_months} months
+                {product.warranty_duration_months} {t('product.months')}
               </Text>
             </View>
           </Card.Content>
@@ -261,31 +273,31 @@ export default function ProductDetailScreen({ navigation, route }) {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.cardTitle}>
-                Store Information
+                {t('product.storeInformation')}
               </Text>
               
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Store:</Text>
+                <Text style={styles.detailLabel}>{t('product.store')}:</Text>
                 <Text style={styles.detailValue}>{product.Store.store_name}</Text>
               </View>
 
               {product.Store.store_chain && (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Chain:</Text>
+                  <Text style={styles.detailLabel}>{t('store.storeChain')}:</Text>
                   <Text style={styles.detailValue}>{product.Store.store_chain}</Text>
                 </View>
               )}
 
               {product.Store.city && (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>City:</Text>
+                  <Text style={styles.detailLabel}>{t('store.city')}:</Text>
                   <Text style={styles.detailValue}>{product.Store.city}</Text>
                 </View>
               )}
 
               {product.Store.phone && (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Phone:</Text>
+                  <Text style={styles.detailLabel}>{t('store.phone')}:</Text>
                   <Text style={styles.detailValue}>{product.Store.phone}</Text>
                 </View>
               )}
@@ -299,7 +311,7 @@ export default function ProductDetailScreen({ navigation, route }) {
             <Card.Content>
               <View style={styles.cardHeaderRow}>
                 <Text variant="titleMedium" style={styles.cardTitle}>
-                  Documents ({product.Documents.length})
+                  {t('document.documents')} ({product.Documents.length})
                 </Text>
                 <Button 
                   mode="text" 
@@ -308,7 +320,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                     productName: product.product_name 
                   })}
                 >
-                  Manage
+                  {t('document.manage')}
                 </Button>
               </View>
               
@@ -336,7 +348,9 @@ export default function ProductDetailScreen({ navigation, route }) {
                       {doc.document_type}
                     </Text>
                     {doc.is_primary && (
-                      <Chip style={styles.primaryChip} compact textStyle={styles.primaryChipText}>Primary</Chip>
+                      <Chip style={styles.primaryChip} compact textStyle={styles.primaryChipText}>
+                        {t('document.primary')}
+                      </Chip>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -351,7 +365,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                   })}
                   style={styles.viewAllButton}
                 >
-                  View All {product.Documents.length} Documents
+                  {t('document.viewAllDocuments', { count: product.Documents.length })}
                 </Button>
               )}
             </Card.Content>
@@ -362,26 +376,28 @@ export default function ProductDetailScreen({ navigation, route }) {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.cardTitle}>
-                Notes
+                {t('product.notes')}
               </Text>
               <Text variant="bodyMedium" style={styles.notesText}>{product.notes}</Text>
             </Card.Content>
           </Card>
         )}
 
-        {/* Service Center Finder */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Button
-              mode="outlined"
-              icon="wrench"
-              onPress={() => navigation.navigate('ServiceCenters', { productId: product.product_id })}
-              style={styles.actionButton}
-            >
-              {t('location.findServiceCenters') || 'Find Service Centers'}
-            </Button>
-          </Card.Content>
-        </Card>
+        {/* Service Center Finder - Only show for regular stores, not custom stores */}
+        {product.Store && product.Store.type !== 'custom' && (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Button
+                mode="outlined"
+                icon="wrench"
+                onPress={() => navigation.navigate('ServiceCenters', { productId: product.product_id })}
+                style={styles.actionButton}
+              >
+                {t('location.findServiceCenters') || 'Find Service Centers'}
+              </Button>
+            </Card.Content>
+          </Card>
+        )}
 
         {/* Export Button */}
         <Card style={styles.card}>

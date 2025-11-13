@@ -15,6 +15,7 @@ const SharedProduct = require('./SharedProduct');
 const SearchHistory = require('./SearchHistory')(sequelize);
 const SavedSearch = require('./SavedSearch')(sequelize);
 const ServiceCenter = require('./ServiceCenter');
+const UserCustomStore = require('./UserCustomStore');
 
 // User -> Products (One to Many)
 User.hasMany(Product, { foreignKey: 'user_id', onDelete: 'CASCADE' });
@@ -23,6 +24,14 @@ Product.belongsTo(User, { foreignKey: 'user_id' });
 // Store -> Products (One to Many)
 Store.hasMany(Product, { foreignKey: 'store_id' });
 Product.belongsTo(Store, { foreignKey: 'store_id' });
+
+// UserCustomStore -> Products (One to Many)
+UserCustomStore.hasMany(Product, { foreignKey: 'user_custom_store_id' });
+Product.belongsTo(UserCustomStore, { foreignKey: 'user_custom_store_id' });
+
+// User -> UserCustomStores (One to Many)
+User.hasMany(UserCustomStore, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+UserCustomStore.belongsTo(User, { foreignKey: 'user_id' });
 
 // Category -> Products (One to Many)
 Category.hasMany(Product, { foreignKey: 'category_id' });
@@ -113,6 +122,7 @@ module.exports = {
   SharedProduct,
   SearchHistory,
   SavedSearch,
-  ServiceCenter
+  ServiceCenter,
+  UserCustomStore
 };
 

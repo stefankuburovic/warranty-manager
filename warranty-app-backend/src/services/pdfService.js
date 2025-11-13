@@ -1,14 +1,92 @@
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
 const { s3 } = require('../config/storage');
+const { getTranslations, formatDate, formatDateLong, normalizeLanguage } = require('../utils/pdfTranslations');
+const fs = require('fs');
+const path = require('path');
 
 class PDFService {
+  // Register Cyrillic-supporting font if available
+  registerCyrillicFont(doc) {
+    try {
+      // Try common system font paths for Cyrillic support
+      const fontPaths = [
+        // Linux common paths
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        // macOS common paths
+        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+        '/Library/Fonts/Arial Unicode.ttf',
+        // Windows common paths (if running on Windows)
+        'C:/Windows/Fonts/arial.ttf',
+        'C:/Windows/Fonts/arialuni.ttf',
+        // Try project fonts directory if it exists
+        path.join(__dirname, '../../fonts/DejaVuSans.ttf'),
+        path.join(__dirname, '../../fonts/ArialUnicode.ttf'),
+      ];
+
+      for (const fontPath of fontPaths) {
+        try {
+          if (fs.existsSync(fontPath)) {
+            doc.registerFont('CyrillicFont', fontPath);
+            console.log('Registered Cyrillic font:', fontPath);
+            return true;
+          }
+        } catch (err) {
+          // Continue to next font path
+        }
+      }
+      
+      console.warn('No Cyrillic-supporting font found. Cyrillic characters may not display correctly.');
+      console.warn('To fix this, add a font file (e.g., DejaVuSans.ttf) to the project and register it.');
+      return false;
+    } catch (error) {
+      console.warn('Error registering Cyrillic font:', error.message);
+      return false;
+    }
+  }
+
+  // Get font name based on language
+  getFontForLanguage(doc, language) {
+    const normalizedLang = normalizeLanguage(language);
+    
+    // For Cyrillic, try to use registered font
+    if (normalizedLang === 'sr-Cyrl') {
+      // Check if Cyrillic font is registered
+      if (doc._fontFamilies && doc._fontFamilies.CyrillicFont) {
+        return 'CyrillicFont';
+      }
+      // Try to register it now
+      if (this.registerCyrillicFont(doc)) {
+        return 'CyrillicFont';
+      }
+    }
+    
+    // Default font for Latin and English
+    return 'Helvetica';
+  }
+
+  // Ensure correct font is set for text that might contain Cyrillic
+  ensureFontForText(doc, language, text) {
+    const normalizedLang = normalizeLanguage(language);
+    
+    // Check if text contains Cyrillic characters
+    const hasCyrillic = /[\u0400-\u04FF]/.test(text);
+    
+    if (hasCyrillic || normalizedLang === 'sr-Cyrl') {
+      const font = this.getFontForLanguage(doc, language);
+      doc.font(font);
+    } else {
+      // Use default font for Latin/English
+      doc.font('Helvetica');
+    }
+  }
   
   // Generate PDF for single product
-  async generateProductPDF(product, user) {
+  async generateProductPDF(product, user, language = 'en') {
     return new Promise(async (resolve, reject) => {
       try {
-        console.log('Generating PDF for product:', product.product_id);
+        console.log('Generating PDF for product:', product.product_id, 'Language:', language);
         
         if (!product) {
           throw new Error('Product is required');
@@ -18,15 +96,27 @@ class PDFService {
           throw new Error('User is required');
         }
 
+        const t = getTranslations(language);
+        const normalizedLang = normalizeLanguage(language);
+
         const doc = new PDFDocument({ 
           size: 'A4', 
           margin: 50,
           info: {
-            Title: `Warranty - ${product.product_name}`,
-            Author: 'Warranty Manager',
-            Subject: 'Product Warranty Information'
+            Title: `${t.warrantyInformation} - ${product.product_name}`,
+            Author: t.appName,
+            Subject: t.warrantyInformation
           }
         });
+
+        // Register Cyrillic font if needed
+        if (normalizedLang === 'sr-Cyrl') {
+          this.registerCyrillicFont(doc);
+        }
+        
+        // Set default font based on language
+        const defaultFont = this.getFontForLanguage(doc, language);
+        doc.font(defaultFont);
 
         const chunks = [];
         doc.on('data', chunk => chunks.push(chunk));
@@ -40,26 +130,26 @@ class PDFService {
         });
 
         // Header
-        await this.addHeader(doc, user);
+        await this.addHeader(doc, user, t, language);
         
         // Product Information
-        await this.addProductInfo(doc, product);
+        await this.addProductInfo(doc, product, t, language);
         
         // Warranty Status
-        await this.addWarrantyStatus(doc, product);
+        await this.addWarrantyStatus(doc, product, t, language);
         
         // Store Information
         if (product.Store) {
-          await this.addStoreInfo(doc, product.Store);
+          await this.addStoreInfo(doc, product.Store, t, language);
         }
         
         // Receipt Image (non-blocking - continues even if it fails)
         if (product.Documents && product.Documents.length > 0) {
-          await this.addReceiptImage(doc, product.Documents[0]);
+          await this.addReceiptImage(doc, product.Documents[0], t);
         }
         
         // Footer
-        this.addFooter(doc);
+        this.addFooter(doc, t);
         
         doc.end();
       } catch (error) {
@@ -71,18 +161,30 @@ class PDFService {
   }
 
   // Generate PDF for multiple products
-  async generateBulkPDF(products, user) {
+  async generateBulkPDF(products, user, language = 'en') {
     return new Promise(async (resolve, reject) => {
       try {
+        const t = getTranslations(language);
+        const normalizedLang = normalizeLanguage(language);
+        
         const doc = new PDFDocument({ 
           size: 'A4', 
           margin: 50,
           info: {
-            Title: 'Warranty Report',
-            Author: 'Warranty Manager',
-            Subject: 'All Warranties'
+            Title: t.warrantyReport,
+            Author: t.appName,
+            Subject: t.warrantyReport
           }
         });
+
+        // Register Cyrillic font if needed
+        if (normalizedLang === 'sr-Cyrl') {
+          this.registerCyrillicFont(doc);
+        }
+        
+        // Set default font based on language
+        const defaultFont = this.getFontForLanguage(doc, language);
+        doc.font(defaultFont);
 
         const chunks = [];
         doc.on('data', chunk => chunks.push(chunk));
@@ -90,34 +192,34 @@ class PDFService {
         doc.on('error', reject);
 
         // Cover Page
-        await this.addCoverPage(doc, user, products.length);
+        await this.addCoverPage(doc, user, products.length, t, language);
         
         // Table of Contents
         doc.addPage();
-        await this.addTableOfContents(doc, products);
+        await this.addTableOfContents(doc, products, t);
         
         // Individual Product Pages
         for (let i = 0; i < products.length; i++) {
           doc.addPage();
-          await this.addHeader(doc, user);
-          await this.addProductInfo(doc, products[i]);
-          await this.addWarrantyStatus(doc, products[i]);
+          await this.addHeader(doc, user, t, language);
+          await this.addProductInfo(doc, products[i], t, language);
+          await this.addWarrantyStatus(doc, products[i], t, language);
           
           if (products[i].Store) {
-            await this.addStoreInfo(doc, products[i].Store);
+            await this.addStoreInfo(doc, products[i].Store, t, language);
           }
           
           if (products[i].Documents && products[i].Documents.length > 0) {
-            await this.addReceiptImage(doc, products[i].Documents[0]);
+            await this.addReceiptImage(doc, products[i].Documents[0], t);
           }
         }
         
         // Summary Page
         doc.addPage();
-        await this.addSummaryPage(doc, products);
+        await this.addSummaryPage(doc, products, t, language);
         
         // Add footer to all pages
-        this.addFooter(doc);
+        this.addFooter(doc, t);
         
         doc.end();
       } catch (error) {
@@ -129,29 +231,34 @@ class PDFService {
   }
 
   // Add header with logo and user info
-  async addHeader(doc, user) {
+  async addHeader(doc, user, t, language = 'en') {
     const y = 50;
     
-    // App Title
+    // App Title - ensure correct font
+    this.ensureFontForText(doc, language, t.appName);
     doc.fontSize(20)
        .fillColor('#6200ee')
-       .text('Warranty Manager', 50, y, { align: 'left' });
+       .text(t.appName, 50, y, { align: 'left' });
     
     // User Info - handle missing fields gracefully
     const userName = user.full_name || user.username || user.email || 'User';
     const userEmail = user.email || '';
     
+    this.ensureFontForText(doc, language, userName);
     doc.fontSize(10)
        .fillColor('#666')
        .text(userName, 400, y, { align: 'right' });
     
     if (userEmail) {
+      this.ensureFontForText(doc, language, userEmail);
       doc.text(userEmail, 400, y + 15, { align: 'right' });
     }
     
     // Date
+    const dateText = `${t.generated}: ${formatDate(new Date(), language)}`;
+    this.ensureFontForText(doc, language, dateText);
     doc.fontSize(9)
-       .text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 400, y + (userEmail ? 30 : 15), { align: 'right' });
+       .text(dateText, 400, y + (userEmail ? 30 : 15), { align: 'right' });
     
     // Line separator
     doc.moveTo(50, y + 50)
@@ -163,18 +270,28 @@ class PDFService {
   }
 
   // Add product information section
-  async addProductInfo(doc, product) {
+  async addProductInfo(doc, product, t, language = 'en') {
     const y = doc.y + 20;
     
-    // Product Name (Title)
+    // Section Title - Product Details
+    this.ensureFontForText(doc, language, t.productDetails);
+    doc.fontSize(14)
+       .fillColor('#000')
+       .text(t.productDetails, 50, y, { encoding: 'UTF-8' });
+    
+    doc.moveDown(1);
+    
+    // Product Name (Title) - ensure correct font for Cyrillic
+    this.ensureFontForText(doc, language, product.product_name);
     doc.fontSize(18)
        .fillColor('#000')
-       .text(product.product_name, 50, y);
+       .text(product.product_name, 50, doc.y);
     
     doc.moveDown(0.5);
     
     // Brand
     if (product.brand) {
+      this.ensureFontForText(doc, language, product.brand);
       doc.fontSize(14)
          .fillColor('#666')
          .text(product.brand);
@@ -191,24 +308,26 @@ class PDFService {
     doc.fontSize(10).fillColor('#666');
     
     // Purchase Date
-    doc.text('Purchase Date:', leftCol, currentY);
+    doc.text(`${t.purchaseDate}:`, leftCol, currentY, { encoding: 'UTF-8' });
     doc.fillColor('#000')
-       .text(new Date(product.purchase_date).toLocaleDateString('en-US'), leftCol + 120, currentY);
+       .text(formatDate(product.purchase_date, language), leftCol + 120, currentY, { encoding: 'UTF-8' });
     currentY += 20;
     
     // Purchase Price
     if (product.purchase_price) {
       doc.fillColor('#666')
-         .text('Purchase Price:', leftCol, currentY);
+         .text(`${t.purchasePrice}:`, leftCol, currentY, { encoding: 'UTF-8' });
       doc.fillColor('#000')
-         .text(`${product.purchase_price} ${product.currency || 'RSD'}`, leftCol + 120, currentY);
+         .text(`${product.purchase_price} ${product.currency || 'RSD'}`, leftCol + 120, currentY, { encoding: 'UTF-8' });
       currentY += 20;
     }
     
     // Category
     if (product.Category) {
+      this.ensureFontForText(doc, language, t.category);
       doc.fillColor('#666')
-         .text('Category:', leftCol, currentY);
+         .text(`${t.category}:`, leftCol, currentY);
+      this.ensureFontForText(doc, language, product.Category.category_name);
       doc.fillColor('#000')
          .text(product.Category.category_name, leftCol + 120, currentY);
       currentY += 20;
@@ -216,8 +335,10 @@ class PDFService {
     
     // Model Number
     if (product.model_number) {
+      this.ensureFontForText(doc, language, t.modelNumber);
       doc.fillColor('#666')
-         .text('Model Number:', leftCol, currentY);
+         .text(`${t.modelNumber}:`, leftCol, currentY);
+      this.ensureFontForText(doc, language, product.model_number);
       doc.fillColor('#000')
          .text(product.model_number, leftCol + 120, currentY);
       currentY += 20;
@@ -225,8 +346,10 @@ class PDFService {
     
     // Serial Number
     if (product.serial_number) {
+      this.ensureFontForText(doc, language, t.serialNumber);
       doc.fillColor('#666')
-         .text('Serial Number:', leftCol, currentY);
+         .text(`${t.serialNumber}:`, leftCol, currentY);
+      this.ensureFontForText(doc, language, product.serial_number);
       doc.fillColor('#000')
          .text(product.serial_number, leftCol + 120, currentY);
       currentY += 20;
@@ -236,13 +359,14 @@ class PDFService {
   }
 
   // Add warranty status section
-  async addWarrantyStatus(doc, product) {
+  async addWarrantyStatus(doc, product, t, language = 'en') {
     const y = doc.y + 10;
     
     // Section Title
+    this.ensureFontForText(doc, language, t.warrantyStatus);
     doc.fontSize(14)
        .fillColor('#000')
-       .text('Warranty Information', 50, y);
+       .text(t.warrantyStatus, 50, y, { encoding: 'UTF-8' });
     
     doc.moveDown(1);
     
@@ -267,48 +391,49 @@ class PDFService {
     // Warranty Duration
     doc.fontSize(10)
        .fillColor('#666')
-       .text('Warranty Duration:', 50, startY);
+       .text(`${t.warrantyDuration}:`, 50, startY, { encoding: 'UTF-8' });
     const durationText = product.warranty_duration_months 
-      ? `${product.warranty_duration_months} months` 
-      : 'Not specified';
+      ? `${product.warranty_duration_months} ${t.months}` 
+      : t.notSpecified;
     doc.fillColor('#000')
-       .text(durationText, 170, startY);
+       .text(durationText, 170, startY, { encoding: 'UTF-8' });
     
     // Warranty End Date
     doc.fillColor('#666')
-       .text('Warranty Expires:', 50, startY + 20);
+       .text(`${t.warrantyExpires}:`, 50, startY + 20, { encoding: 'UTF-8' });
     doc.fillColor('#000')
-       .text(warrantyEnd.toLocaleDateString('en-US'), 170, startY + 20);
+       .text(formatDate(warrantyEnd, language), 170, startY + 20, { encoding: 'UTF-8' });
     
     // Status Badge
     const statusY = startY + 45;
     const statusColor = isExpired ? '#f44336' : daysRemaining <= 30 ? '#ff9800' : '#4caf50';
-    const statusText = isExpired ? 'EXPIRED' : daysRemaining <= 30 ? 'EXPIRING SOON' : 'ACTIVE';
+    const statusText = isExpired ? t.expired : daysRemaining <= 30 ? t.expiringSoon : t.active;
     
     doc.roundedRect(50, statusY, 120, 30, 5)
        .fillAndStroke(statusColor, statusColor);
     
     doc.fontSize(12)
        .fillColor('#fff')
-       .text(statusText, 50, statusY + 8, { width: 120, align: 'center' });
+       .text(statusText, 50, statusY + 8, { width: 120, align: 'center', encoding: 'UTF-8' });
     
     if (!isExpired) {
       doc.fontSize(10)
          .fillColor('#666')
-         .text(`${daysRemaining} days remaining`, 180, statusY + 10);
+         .text(`${daysRemaining} ${t.daysRemaining}`, 180, statusY + 10, { encoding: 'UTF-8' });
     }
     
     doc.y = statusY + 50;
   }
 
   // Add store information section
-  async addStoreInfo(doc, store) {
+  async addStoreInfo(doc, store, t, language = 'en') {
     const y = doc.y + 10;
     
     // Section Title
+    this.ensureFontForText(doc, language, t.storeInformation);
     doc.fontSize(14)
        .fillColor('#000')
-       .text('Store Information', 50, y);
+       .text(t.storeInformation, 50, y, { encoding: 'UTF-8' });
     
     doc.moveDown(1);
     
@@ -317,24 +442,32 @@ class PDFService {
     doc.fontSize(10);
     
     // Store Name
-    doc.fillColor('#666').text('Store:', 50, startY);
+    this.ensureFontForText(doc, language, t.store);
+    doc.fillColor('#666').text(`${t.store}:`, 50, startY);
+    this.ensureFontForText(doc, language, store.store_name);
     doc.fillColor('#000').text(store.store_name, 170, startY);
     
     // Store Chain
     if (store.store_chain) {
-      doc.fillColor('#666').text('Chain:', 50, startY + 20);
+      this.ensureFontForText(doc, language, t.chain);
+      doc.fillColor('#666').text(`${t.chain}:`, 50, startY + 20);
+      this.ensureFontForText(doc, language, store.store_chain);
       doc.fillColor('#000').text(store.store_chain, 170, startY + 20);
     }
     
     // City
     if (store.city) {
-      doc.fillColor('#666').text('City:', 50, startY + 40);
+      this.ensureFontForText(doc, language, t.city);
+      doc.fillColor('#666').text(`${t.city}:`, 50, startY + 40);
+      this.ensureFontForText(doc, language, store.city);
       doc.fillColor('#000').text(store.city, 170, startY + 40);
     }
     
     // Address
     if (store.address) {
-      doc.fillColor('#666').text('Address:', 50, startY + 60);
+      this.ensureFontForText(doc, language, t.address);
+      doc.fillColor('#666').text(`${t.address}:`, 50, startY + 60);
+      this.ensureFontForText(doc, language, store.address);
       doc.fillColor('#000').text(store.address, 170, startY + 60, { width: 300 });
     }
     
@@ -342,7 +475,7 @@ class PDFService {
   }
 
   // Add receipt image
-  async addReceiptImage(doc, document) {
+  async addReceiptImage(doc, document, t) {
     try {
       // Validate document and cloud_storage_url
       if (!document || !document.cloud_storage_url) {
@@ -367,19 +500,36 @@ class PDFService {
       // Section Title
       doc.fontSize(14)
          .fillColor('#000')
-         .text('Receipt Image', 50, doc.y);
+         .text(t.receiptImage, 50, doc.y, { encoding: 'UTF-8' });
       
       doc.moveDown(1);
       
+      // Extract S3 key from cloud_storage_url
+      // If it's a signed URL, extract the key; otherwise use it as-is
+      let s3Key = document.cloud_storage_url;
+      if (s3Key.includes('amazonaws.com') || s3Key.includes('?')) {
+        // It's a signed URL, extract the key
+        try {
+          const urlParts = s3Key.split('/');
+          const keyStartIndex = urlParts.findIndex(part => part.includes('users/'));
+          if (keyStartIndex !== -1) {
+            s3Key = urlParts.slice(keyStartIndex).join('/').split('?')[0];
+          }
+        } catch (e) {
+          console.warn('Could not parse S3 URL, using as-is:', e.message);
+        }
+      }
+      
       console.log('Downloading image from S3:', {
         bucket: process.env.AWS_BUCKET_NAME,
-        key: document.cloud_storage_url
+        key: s3Key,
+        originalUrl: document.cloud_storage_url?.substring(0, 100)
       });
       
       // Download image from S3
       const s3Object = await s3.getObject({
         Bucket: process.env.AWS_BUCKET_NAME,
-        Key: document.cloud_storage_url
+        Key: s3Key
       }).promise();
       
       // Validate S3 object has body
@@ -435,17 +585,17 @@ class PDFService {
       }
       doc.fontSize(10)
          .fillColor('#999')
-         .text('Receipt image not available', 50, doc.y);
+         .text(t.receiptImageNotAvailable, 50, doc.y, { encoding: 'UTF-8' });
       doc.moveDown(2);
     }
   }
 
   // Add cover page
-  async addCoverPage(doc, user, productCount) {
+  async addCoverPage(doc, user, productCount, t, language = 'en') {
     // Title
     doc.fontSize(30)
        .fillColor('#6200ee')
-       .text('Warranty Report', 50, 200, { width: 495, align: 'center' });
+       .text(t.warrantyReport, 50, 200, { width: 495, align: 'center', encoding: 'UTF-8' });
     
     doc.moveDown(2);
     
@@ -453,12 +603,12 @@ class PDFService {
     const userName = user.full_name || user.username || user.email || 'User';
     doc.fontSize(16)
        .fillColor('#000')
-       .text(userName, 50, doc.y, { width: 495, align: 'center' });
+       .text(userName, 50, doc.y, { width: 495, align: 'center', encoding: 'UTF-8' });
     
     if (user.email) {
       doc.fontSize(12)
          .fillColor('#666')
-         .text(user.email, 50, doc.y + 20, { width: 495, align: 'center' });
+         .text(user.email, 50, doc.y + 20, { width: 495, align: 'center', encoding: 'UTF-8' });
       doc.y += 20;
     }
     
@@ -471,28 +621,24 @@ class PDFService {
     
     doc.fontSize(14)
        .fillColor('#000')
-       .text(`Total Products: ${productCount}`, 150, boxY + 20, { width: 295, align: 'center' });
+       .text(`${t.totalProducts}: ${productCount}`, 150, boxY + 20, { width: 295, align: 'center', encoding: 'UTF-8' });
     
     doc.fontSize(12)
        .fillColor('#666')
-       .text(`Generated: ${new Date().toLocaleDateString('en-US', { 
-         year: 'numeric', 
-         month: 'long', 
-         day: 'numeric' 
-       })}`, 150, boxY + 50, { width: 295, align: 'center' });
+       .text(`${t.generated}: ${formatDateLong(new Date(), language)}`, 150, boxY + 50, { width: 295, align: 'center', encoding: 'UTF-8' });
     
     // Footer
     doc.fontSize(10)
        .fillColor('#999')
-       .text('Warranty Manager', 50, 750, { align: 'center' })
-       .text('Keep track of all your warranties', { align: 'center' });
+       .text(t.appName, 50, 750, { align: 'center', encoding: 'UTF-8' })
+       .text(t.keepTrack, { align: 'center', encoding: 'UTF-8' });
   }
 
   // Add table of contents
-  async addTableOfContents(doc, products) {
+  async addTableOfContents(doc, products, t) {
     doc.fontSize(20)
        .fillColor('#000')
-       .text('Table of Contents', 50, 100);
+       .text(t.tableOfContents, 50, 100, { encoding: 'UTF-8' });
     
     doc.moveDown(2);
     
@@ -503,15 +649,15 @@ class PDFService {
       const pageNum = index + 4; // Adjust based on cover + TOC pages
       
       doc.fillColor('#000')
-         .text(`${index + 1}. ${product.product_name}`, 50, y);
+         .text(`${index + 1}. ${product.product_name}`, 50, y, { encoding: 'UTF-8' });
       
       doc.fillColor('#666')
-         .text(`Page ${pageNum}`, 500, y, { align: 'right' });
+         .text(`${t.page} ${pageNum}`, 500, y, { align: 'right', encoding: 'UTF-8' });
       
       if (product.brand) {
         doc.fontSize(9)
            .fillColor('#999')
-           .text(product.brand, 70, y + 12);
+           .text(product.brand, 70, y + 12, { encoding: 'UTF-8' });
       }
       
       doc.moveDown(1.5);
@@ -520,10 +666,10 @@ class PDFService {
   }
 
   // Add summary page
-  async addSummaryPage(doc, products) {
+  async addSummaryPage(doc, products, t, language = 'en') {
     doc.fontSize(20)
        .fillColor('#000')
-       .text('Summary', 50, 100);
+       .text(t.summary, 50, 100, { encoding: 'UTF-8' });
     
     doc.moveDown(2);
     
@@ -545,27 +691,27 @@ class PDFService {
     doc.fontSize(12);
     let y = doc.y;
     
-    doc.fillColor('#666').text('Total Products:', 50, y);
-    doc.fillColor('#000').text(totalProducts.toString(), 200, y);
+    doc.fillColor('#666').text(`${t.totalProducts}:`, 50, y, { encoding: 'UTF-8' });
+    doc.fillColor('#000').text(totalProducts.toString(), 200, y, { encoding: 'UTF-8' });
     y += 30;
     
-    doc.fillColor('#666').text('Active Warranties:', 50, y);
-    doc.fillColor('#4caf50').text(activeWarranties.toString(), 200, y);
+    doc.fillColor('#666').text(`${t.activeWarranties}:`, 50, y, { encoding: 'UTF-8' });
+    doc.fillColor('#4caf50').text(activeWarranties.toString(), 200, y, { encoding: 'UTF-8' });
     y += 30;
     
-    doc.fillColor('#666').text('Expired Warranties:', 50, y);
-    doc.fillColor('#f44336').text(expiredWarranties.toString(), 200, y);
+    doc.fillColor('#666').text(`${t.expiredWarranties}:`, 50, y, { encoding: 'UTF-8' });
+    doc.fillColor('#f44336').text(expiredWarranties.toString(), 200, y, { encoding: 'UTF-8' });
     y += 30;
     
-    doc.fillColor('#666').text('Total Spent:', 50, y);
-    doc.fillColor('#000').text(`${totalSpent.toLocaleString()} RSD`, 200, y);
+    doc.fillColor('#666').text(`${t.totalSpent}:`, 50, y, { encoding: 'UTF-8' });
+    doc.fillColor('#000').text(`${totalSpent.toLocaleString(language === 'sr-Latn' ? 'sr-RS' : 'en-US')} RSD`, 200, y, { encoding: 'UTF-8' });
     
     doc.moveDown(4);
     
     // Products by Category
     doc.fontSize(14)
        .fillColor('#000')
-       .text('Products by Category', 50, doc.y);
+       .text(t.productsByCategory, 50, doc.y, { encoding: 'UTF-8' });
     
     doc.moveDown(1);
     
@@ -579,14 +725,15 @@ class PDFService {
     
     doc.fontSize(10);
     Object.entries(categoryCount).forEach(([category, count]) => {
-      doc.fillColor('#666').text(`${category}:`, 50, doc.y);
-      doc.fillColor('#000').text(`${count} item${count > 1 ? 's' : ''}`, 200, doc.y);
+      doc.fillColor('#666').text(`${category}:`, 50, doc.y, { encoding: 'UTF-8' });
+      const itemText = count > 1 ? `${count} ${t.items}` : `1 ${t.item}`;
+      doc.fillColor('#000').text(itemText, 200, doc.y, { encoding: 'UTF-8' });
       doc.moveDown(0.8);
     });
   }
 
   // Add footer to each page
-  addFooter(doc) {
+  addFooter(doc, t) {
     try {
       const pages = doc.bufferedPageRange();
       
@@ -614,18 +761,18 @@ class PDFService {
           doc.fontSize(9)
              .fillColor('#999')
              .text(
-               `Page ${pageNumber} of ${totalPageCount}`,
+               `${t.page} ${pageNumber} of ${totalPageCount}`,
                50,
                doc.page.height - 50,
-               { align: 'center' }
+               { align: 'center', encoding: 'UTF-8' }
              );
           
           // App name
           doc.text(
-            'Generated by Warranty Manager',
+            t.generatedBy,
             50,
             doc.page.height - 35,
-            { align: 'center' }
+            { align: 'center', encoding: 'UTF-8' }
           );
         } catch (pageError) {
           console.error(`Error adding footer to page ${pageIndex}:`, pageError.message);

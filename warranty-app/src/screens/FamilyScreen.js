@@ -4,10 +4,12 @@ import { Text, Button, Appbar, Card, List, Chip, Dialog, Portal, TextInput, Icon
 import { useTranslation } from 'react-i18next';
 import { familyApi } from '../api/family';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function FamilyScreen({ navigation }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { theme, isDark } = useTheme();
   const [family, setFamily] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [createDialogVisible, setCreateDialogVisible] = useState(false);
@@ -153,14 +155,67 @@ export default function FamilyScreen({ navigation }) {
     }
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background
+    },
+    content: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: theme.colors.background
+    },
+    card: {
+      marginBottom: 16,
+      elevation: 2,
+      backgroundColor: theme.colors.surface
+    },
+    emptyText: {
+      marginBottom: 30,
+      textAlign: 'center',
+      color: theme.colors.textSecondary
+    },
+    aboutText: {
+      color: theme.colors.textSecondary,
+      marginBottom: 16
+    },
+    bullet: {
+      color: theme.colors.success,
+      fontSize: 16,
+      fontWeight: 'bold',
+      marginRight: 8
+    },
+    inviteCodeBox: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: theme.colors.surfaceVariant,
+      borderRadius: 8,
+      marginRight: 8
+    },
+    inviteCodeLabel: {
+      color: theme.colors.textSecondary,
+      marginBottom: 4
+    },
+    sharedDescription: {
+      color: theme.colors.textSecondary,
+      marginTop: 8
+    }
+  });
+
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={dynamicStyles.container}>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => navigation.goBack()} />
           <Appbar.Content title={t('family.title')} />
         </Appbar.Header>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <Text>{t('common.loading')}</Text>
         </View>
       </View>
@@ -169,19 +224,19 @@ export default function FamilyScreen({ navigation }) {
 
   if (!family) {
     return (
-      <View style={styles.container}>
+      <View style={dynamicStyles.container}>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => navigation.goBack()} />
           <Appbar.Content title={t('family.title')} />
         </Appbar.Header>
 
-        <ScrollView style={styles.content}>
-          <Card style={styles.card}>
+        <ScrollView style={dynamicStyles.content}>
+          <Card style={dynamicStyles.card}>
             <Card.Content>
               <Text variant="headlineSmall" style={styles.emptyTitle}>
                 {t('family.noFamily')}
               </Text>
-              <Text variant="bodyMedium" style={styles.emptyText}>
+              <Text variant="bodyMedium" style={dynamicStyles.emptyText}>
                 {t('family.noFamilyDescription')}
               </Text>
 
@@ -205,29 +260,29 @@ export default function FamilyScreen({ navigation }) {
             </Card.Content>
           </Card>
 
-          <Card style={styles.card}>
+          <Card style={dynamicStyles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.cardTitle}>
                 {t('family.aboutFamilySharing')}
               </Text>
-              <Text variant="bodyMedium" style={styles.aboutText}>
+              <Text variant="bodyMedium" style={dynamicStyles.aboutText}>
                 {t('family.aboutDescription')}
               </Text>
               <View style={styles.featureList}>
                 <View style={styles.featureItem}>
-                  <Text style={styles.bullet}>✓</Text>
+                  <Text style={dynamicStyles.bullet}>✓</Text>
                   <Text style={styles.featureText}>{t('family.feature1')}</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={styles.bullet}>✓</Text>
+                  <Text style={dynamicStyles.bullet}>✓</Text>
                   <Text style={styles.featureText}>{t('family.feature2')}</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={styles.bullet}>✓</Text>
+                  <Text style={dynamicStyles.bullet}>✓</Text>
                   <Text style={styles.featureText}>{t('family.feature3')}</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={styles.bullet}>✓</Text>
+                  <Text style={dynamicStyles.bullet}>✓</Text>
                   <Text style={styles.featureText}>{t('family.feature4')}</Text>
                 </View>
               </View>
@@ -275,7 +330,7 @@ export default function FamilyScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title={family.name} />
@@ -285,8 +340,8 @@ export default function FamilyScreen({ navigation }) {
         />
       </Appbar.Header>
 
-      <ScrollView style={styles.content}>
-        <Card style={styles.card}>
+      <ScrollView style={dynamicStyles.content}>
+        <Card style={dynamicStyles.card}>
           <Card.Content>
             <View style={styles.familyHeader}>
               <View>
@@ -302,8 +357,8 @@ export default function FamilyScreen({ navigation }) {
             </View>
 
             <View style={styles.inviteCodeContainer}>
-              <View style={styles.inviteCodeBox}>
-                <Text variant="bodySmall" style={styles.inviteCodeLabel}>
+              <View style={dynamicStyles.inviteCodeBox}>
+                <Text variant="bodySmall" style={dynamicStyles.inviteCodeLabel}>
                   {t('family.inviteCode')}
                 </Text>
                 <Text variant="headlineMedium" style={styles.inviteCodeText}>
@@ -319,7 +374,7 @@ export default function FamilyScreen({ navigation }) {
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={dynamicStyles.card}>
           <Card.Content>
             <Text variant="titleLarge" style={styles.cardTitle}>
               {t('family.members')} ({family.members.length})
@@ -356,7 +411,7 @@ export default function FamilyScreen({ navigation }) {
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={dynamicStyles.card}>
           <Card.Content>
             <View style={styles.cardHeaderRow}>
               <Text variant="titleLarge">{t('family.sharedProducts')}</Text>
@@ -367,13 +422,13 @@ export default function FamilyScreen({ navigation }) {
                 {t('family.viewAll')}
               </Button>
             </View>
-            <Text variant="bodyMedium" style={styles.sharedDescription}>
+            <Text variant="bodyMedium" style={dynamicStyles.sharedDescription}>
               {t('family.sharedProductsDescription')}
             </Text>
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={dynamicStyles.card}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.cardTitle}>
               {t('family.actions')}
@@ -409,23 +464,6 @@ export default function FamilyScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5'
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  content: {
-    flex: 1,
-    padding: 16
-  },
-  card: {
-    marginBottom: 16,
-    elevation: 2
-  },
   cardTitle: {
     marginBottom: 12,
     fontWeight: 'bold'
@@ -434,17 +472,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center'
   },
-  emptyText: {
-    marginBottom: 30,
-    textAlign: 'center',
-    color: '#666'
-  },
   actionButton: {
     marginBottom: 12
-  },
-  aboutText: {
-    color: '#666',
-    marginBottom: 16
   },
   featureList: {
     marginTop: 8
@@ -453,12 +482,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 8,
     alignItems: 'flex-start'
-  },
-  bullet: {
-    color: '#4caf50',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 8
   },
   featureText: {
     flex: 1,
@@ -479,17 +502,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16
   },
-  inviteCodeBox: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginRight: 8
-  },
-  inviteCodeLabel: {
-    color: '#666',
-    marginBottom: 4
-  },
   inviteCodeText: {
     fontWeight: 'bold',
     letterSpacing: 2
@@ -503,10 +515,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8
-  },
-  sharedDescription: {
-    color: '#666',
-    marginTop: 8
   }
 });
 

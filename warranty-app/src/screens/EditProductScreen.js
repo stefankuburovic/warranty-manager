@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Platform } from 'react-native';
-import { TextInput, Button, Text, Appbar, Menu } from 'react-native-paper';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { TextInput, Button, Text, Appbar } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { productsApi } from '../api/products';
-import { categoriesApi } from '../api/categories';
-import { storesApi } from '../api/stores';
-import { formatDate, getLocalizedDateFormat } from '../utils/dateHelpers';
+import StoreSelector from '../components/StoreSelector';
+import CategorySelector from '../components/CategorySelector';
 import { formatPriceInput, parsePrice } from '../utils/numberHelpers';
-import i18n from '../i18n';
 
 export default function EditProductScreen({ navigation, route }) {
   const { t } = useTranslation();
@@ -20,6 +17,7 @@ export default function EditProductScreen({ navigation, route }) {
   const [brand, setBrand] = useState(initialProduct.brand || '');
   const [modelNumber, setModelNumber] = useState(initialProduct.model_number || '');
   const [serialNumber, setSerialNumber] = useState(initialProduct.serial_number || '');
+  const [barcode, setBarcode] = useState(initialProduct.barcode || '');
   const [purchaseDate, setPurchaseDate] = useState(initialProduct.purchase_date);
   const [price, setPrice] = useState(() => {
     // Format initial price for display
@@ -32,93 +30,25 @@ export default function EditProductScreen({ navigation, route }) {
   const [notes, setNotes] = useState(initialProduct.notes || '');
   const [isLoading, setIsLoading] = useState(false);
   
-  // Date picker state
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    // Convert YYYY-MM-DD to Date object
-    if (initialProduct.purchase_date) {
-      const [year, month, day] = initialProduct.purchase_date.split('-');
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  // Determine initial store value - could be regular store_id or custom store (from Store.store_id)
+  const getInitialStoreId = () => {
+    // Check if product has Store object with store_id (normalized format)
+    if (initialProduct.Store?.store_id) {
+      return initialProduct.Store.store_id; // Could be regular ID or "custom_123"
     }
-    return new Date();
-  });
+    // Fallback to direct store_id
+    if (initialProduct.store_id) {
+      return initialProduct.store_id;
+    }
+    // Check for user_custom_store_id
+    if (initialProduct.user_custom_store_id) {
+      return `custom_${initialProduct.user_custom_store_id}`;
+    }
+    return null;
+  };
   
-  // Categories and stores
-  const [categories, setCategories] = useState([]);
-  const [stores, setStores] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(initialProduct.category_id);
-  const [selectedStore, setSelectedStore] = useState(initialProduct.store_id);
-  
-  // Menu visibility
-  const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
-  const [storeMenuVisible, setStoreMenuVisible] = useState(false);
-
-  useEffect(() => {
-    loadCategoriesAndStores();
-  }, []);
-
-  const loadCategoriesAndStores = async () => {
-    try {
-      const [categoriesData, storesData] = await Promise.all([
-        categoriesApi.getCategories(),
-        storesApi.getStores()
-      ]);
-      setCategories(categoriesData.categories || []);
-      setStores(storesData.stores || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    }
-  };
-
-  // Format date for display (localized)
-  const getDisplayDate = () => {
-    if (!purchaseDate) return '';
-    try {
-      // Get localized format and convert dots to slashes for date-fns compatibility
-      let dateFormat = getLocalizedDateFormat();
-      // date-fns format: convert dd.MM.yyyy to dd/MM/yyyy (dots need to be escaped or use slashes)
-      if (dateFormat.includes('.')) {
-        dateFormat = dateFormat.replace(/\./g, '/');
-      }
-      return formatDate(purchaseDate, dateFormat);
-    } catch (error) {
-      console.error('Date formatting error:', error);
-      // Fallback: use native locale formatting
-      try {
-        const date = new Date(purchaseDate + 'T00:00:00');
-        const currentLang = i18n.language;
-        if (currentLang.startsWith('sr')) {
-          return date.toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        }
-        return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-      } catch (fallbackError) {
-        return purchaseDate; // Final fallback to raw date
-      }
-    }
-  };
-
-  // Handle date picker change
-  const handleDateChange = (event, date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    
-    if (event.type === 'set' && date) {
-      setSelectedDate(date);
-      // Convert Date to YYYY-MM-DD format
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
-      setPurchaseDate(formattedDate);
-      
-      if (Platform.OS === 'ios') {
-        setShowDatePicker(false);
-      }
-    } else if (event.type === 'dismissed') {
-      setShowDatePicker(false);
-    }
-  };
+  const [selectedStore, setSelectedStore] = useState(getInitialStoreId());
 
   const handleSubmit = async () => {
     if (!productName.trim()) {
@@ -142,6 +72,7 @@ export default function EditProductScreen({ navigation, route }) {
         brand: brand.trim() || null,
         model_number: modelNumber.trim() || null,
         serial_number: serialNumber.trim() || null,
+        barcode: barcode.trim() || null,
         purchase_date: purchaseDate,
         purchase_price: parsedPrice && !isNaN(parsedPrice) ? parsedPrice : null,
         currency: 'RSD',
@@ -176,7 +107,7 @@ export default function EditProductScreen({ navigation, route }) {
         <Appbar.Content title={t('product.editProduct')} />
       </Appbar.Header>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.scrollView}>
         <View style={styles.form}>
           <TextInput
             label={t('product.productName') + ' *'}
@@ -192,6 +123,16 @@ export default function EditProductScreen({ navigation, route }) {
             value={brand}
             onChangeText={setBrand}
             mode="outlined"
+            style={styles.input}
+            textColor={theme.colors.text}
+          />
+
+          <TextInput
+            label="Barcode (Optional)"
+            value={barcode}
+            onChangeText={setBarcode}
+            mode="outlined"
+            keyboardType="numeric"
             style={styles.input}
             textColor={theme.colors.text}
           />
@@ -214,86 +155,27 @@ export default function EditProductScreen({ navigation, route }) {
             textColor={theme.colors.text}
           />
 
-          <Menu
-            visible={categoryMenuVisible}
-            onDismiss={() => setCategoryMenuVisible(false)}
-            anchor={
-              <TouchableOpacity onPress={() => setCategoryMenuVisible(true)}>
-                <TextInput
-                  label={t('product.category')}
-                  value={categories.find(c => c.category_id === selectedCategory)?.category_name || ''}
-                  mode="outlined"
-                  style={styles.input}
-                  editable={false}
-                  right={<TextInput.Icon icon="chevron-down" />}
-                  textColor={theme.colors.text}
-                />
-              </TouchableOpacity>
-            }
-          >
-            {categories.map((category) => (
-              <Menu.Item
-                key={category.category_id}
-                onPress={() => {
-                  setSelectedCategory(category.category_id);
-                  setCategoryMenuVisible(false);
-                }}
-                title={category.category_name}
-              />
-            ))}
-          </Menu>
+          <CategorySelector
+            value={selectedCategory}
+            onSelect={setSelectedCategory}
+            style={styles.categorySelector}
+          />
 
-          <Menu
-            visible={storeMenuVisible}
-            onDismiss={() => setStoreMenuVisible(false)}
-            anchor={
-              <TouchableOpacity onPress={() => setStoreMenuVisible(true)}>
-                <TextInput
-                  label={t('product.store')}
-                  value={stores.find(s => s.store_id === selectedStore)?.store_name || ''}
-                  mode="outlined"
-                  style={styles.input}
-                  editable={false}
-                  right={<TextInput.Icon icon="chevron-down" />}
-                  textColor={theme.colors.text}
-                />
-              </TouchableOpacity>
-            }
-          >
-            {stores.map((store) => (
-              <Menu.Item
-                key={store.store_id}
-                onPress={() => {
-                  setSelectedStore(store.store_id);
-                  setStoreMenuVisible(false);
-                }}
-                title={store.store_name}
-              />
-            ))}
-          </Menu>
+          <StoreSelector
+            value={selectedStore}
+            onSelect={setSelectedStore}
+            style={styles.storeSelector}
+          />
 
-          <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-            <TextInput
-              label={t('product.purchaseDate') + ' *'}
-              value={getDisplayDate()}
-              mode="outlined"
-              placeholder={t('product.purchaseDate')}
-              style={styles.input}
-              editable={false}
-              right={<TextInput.Icon icon="calendar" />}
-              textColor={theme.colors.text}
-            />
-          </TouchableOpacity>
-          
-          {showDatePicker && (
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              maximumDate={new Date()}
-            />
-          )}
+          <TextInput
+            label={t('product.purchaseDate') + ' (YYYY-MM-DD) *'}
+            value={purchaseDate}
+            onChangeText={setPurchaseDate}
+            mode="outlined"
+            placeholder="2024-11-10"
+            style={styles.input}
+            textColor={theme.colors.text}
+          />
 
           <TextInput
             label={t('product.price') + ' (RSD)'}
@@ -354,7 +236,7 @@ const createStyles = (theme) => StyleSheet.create({
   appBar: {
     backgroundColor: theme.colors.appBar
   },
-  content: {
+  scrollView: {
     flex: 1
   },
   form: {
@@ -363,6 +245,13 @@ const createStyles = (theme) => StyleSheet.create({
   input: {
     marginBottom: 16,
     backgroundColor: theme.colors.surface
+  },
+  categorySelector: {
+    marginBottom: 16
+  },
+  storeSelector: {
+    marginBottom: 16,
+    zIndex: 1000
   },
   submitButton: {
     marginTop: 16,

@@ -87,7 +87,10 @@ exports.uploadDocument = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload document error:', error);
-    res.status(500).json({ error: 'Failed to upload document' });
+    res.status(500).json({ 
+      error: error.message || 'Failed to upload document',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
