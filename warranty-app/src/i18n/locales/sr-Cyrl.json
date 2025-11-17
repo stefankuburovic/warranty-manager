@@ -65,7 +65,12 @@
     "scanBarcode": "Скенирај баркод",
     "notifications": "Обавештења",
     "statistics": "Статистика",
-    "settings": "Подешавања"
+    "settings": "Подешавања",
+    "deleteInactiveAction": "Обриши неактивне гаранције",
+    "deleteInactiveTitle": "Обриши неактивне гаранције",
+    "deleteInactiveMessage": "Ово ће трајно обрисати све неактивне гаранције. Да ли желите да наставите?",
+    "noInactiveTitle": "Нема неактивних гаранција",
+    "noInactiveDescription": "Све гаранције су тренутно активне."
   },
   "product": {
     "title": "Производ",
@@ -82,14 +87,25 @@
     "modelNumber": "Број модела",
     "serialNumber": "Серијски број",
     "notes": "Напомене",
-    "status": "Статус",
-    "active": "Активна",
-    "expired": "Истекла",
-    "expiringSoon": "Ускоро истиче",
-    "daysLeft": "{{count}} дан преостао",
-    "daysLeft_plural": "{{count}} дана преостало",
+    "status": {
+      "label": "Статус",
+      "active": "Активна",
+      "inactive": "Неактивна",
+      "expired": "Истекла",
+      "expiringSoon": "Ускоро истиче",
+      "daysLeft": "{{count}} дан преостао",
+      "daysLeft_plural": "{{count}} дана преостало"
+    },
     "expiresIn": "Истиче за {{days}} дана",
     "expiredOn": "Истекла {{date}}",
+    "expiresLabel": "Истиче",
+    "priceLabel": "Цена",
+    "actions": {
+      "markInactive": "Означи као неактивну",
+      "markActive": "Означи као активну",
+      "delete": "Обриши",
+      "extend": "Продужи"
+    },
     "addProduct": "Додај производ",
     "editProduct": "Измени производ",
     "deleteProduct": "Обриши производ",

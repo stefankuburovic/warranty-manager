@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StatusBar } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -101,15 +102,17 @@ function ThemeContent() {
   const { theme } = useTheme();
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        <ToastProvider>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ToastProvider>
-      </PaperProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <PaperProvider theme={theme}>
+          <ToastProvider>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ToastProvider>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

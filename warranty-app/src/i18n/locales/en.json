@@ -68,7 +68,12 @@
     "scanBarcode": "Scan Barcode",
     "notifications": "Notifications",
     "statistics": "Statistics",
-    "settings": "Settings"
+    "settings": "Settings",
+    "deleteInactiveAction": "Delete inactive warranties",
+    "deleteInactiveTitle": "Delete inactive warranties",
+    "deleteInactiveMessage": "This will permanently remove all inactive warranties. Continue?",
+    "noInactiveTitle": "No inactive warranties",
+    "noInactiveDescription": "All warranties are currently active."
   },
   "product": {
     "title": "Product",
@@ -85,12 +90,23 @@
     "modelNumber": "Model Number",
     "serialNumber": "Serial Number",
     "notes": "Notes",
-    "status": "Status",
-    "active": "Active",
-    "expired": "Expired",
-    "expiringSoon": "Expiring Soon",
-    "daysLeft": "{{count}} days left",
-    "daysLeft_plural": "{{count}} days left",
+    "status": {
+      "label": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expired": "Expired",
+      "expiringSoon": "Expiring Soon",
+      "daysLeft": "{{count}} day left",
+      "daysLeft_plural": "{{count}} days left"
+    },
+    "expiresLabel": "Expires",
+    "priceLabel": "Price",
+    "actions": {
+      "markInactive": "Make inactive",
+      "markActive": "Make active",
+      "delete": "Delete",
+      "extend": "Extend"
+    },
     "expiresIn": "Expires in {{days}} days",
     "expiredOn": "Expired on {{date}}",
     "addProduct": "Add Product",

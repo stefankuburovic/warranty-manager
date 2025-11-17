@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Image } from 'react-native';
-import { Text, FAB, Appbar, Card, Chip, Searchbar } from 'react-native-paper';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { Text, FAB, Appbar, Searchbar } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { productsApi } from '../api/products';
 import Logo from '../components/Logo';
+import ProductCard from '../components/ProductCard';
+
+const PAGE_SIZE = 20;
 
 export default function HomeScreen({ navigation, route }) {
   const { t } = useTranslation();
@@ -13,13 +16,18 @@ export default function HomeScreen({ navigation, route }) {
   const { user, signOut } = useAuth();
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   const isInitialMount = useRef(true);
   const [fabOpen, setFabOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(true);
   }, []);
 
   useEffect(() => {
@@ -41,21 +49,29 @@ export default function HomeScreen({ navigation, route }) {
 
     // Debounce search
     const timeoutId = setTimeout(() => {
-      loadProducts();
+      loadProducts(true);
     }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  const loadProducts = async () => {
+  const loadProducts = async (reset = false) => {
     try {
-      setIsLoading(true);
+      if (reset) {
+        setIsLoading(true);
+        setCurrentPage(1);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const page = reset ? 1 : currentPage + 1;
       const params = { 
-        status: 'active',
+        // Removed status filter to show all products (active and inactive)
         sort: 'purchase_date',
         order: 'DESC',
-        limit: 50, // Set explicit limit to prevent loading too many products at once
-        page: 1
+        limit: PAGE_SIZE,
+        page: page
       };
       
       // Add search query if present
@@ -64,98 +80,118 @@ export default function HomeScreen({ navigation, route }) {
       }
       
       const data = await productsApi.getProducts(params);
-      setProducts(data.products || []);
+      const newProducts = data.products || [];
+      const pagination = data.pagination || {};
+      
+      if (reset) {
+        setProducts(newProducts);
+      } else {
+        setProducts(prev => [...prev, ...newProducts]);
+      }
+      
+      setTotalPages(pagination.pages || 1);
+      setHasMore(page < (pagination.pages || 1));
+      setCurrentPage(page);
     } catch (error) {
       console.error('Error loading products:', error);
       // Show user-friendly error message
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         console.error('Request timed out. The server may be slow or unreachable.');
       }
-      // Set empty array on error to prevent UI issues
-      setProducts([]);
+      // Set empty array on error only if reset
+      if (reset) {
+        setProducts([]);
+      }
     } finally {
       setIsLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore && !isLoading) {
+      loadProducts(false);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadProducts();
+    await loadProducts(true);
     setRefreshing(false);
   };
 
-  const getWarrantyStatus = (warrantyEndDate) => {
-    const today = new Date();
-    const endDate = new Date(warrantyEndDate);
-    const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-
-    if (daysRemaining < 0) {
-      return { label: t('product.expired'), color: '#f44336' };
-    } else if (daysRemaining <= 30) {
-      return { label: t('product.daysLeft', { count: daysRemaining }), color: '#ff9800' };
-    } else {
-      return { label: t('product.active'), color: '#4caf50' };
+  const handleToggleStatus = async (productId, newStatus) => {
+    try {
+      await productsApi.updateProduct(productId, { is_active: newStatus });
+      setProducts(prev =>
+        prev.map(product =>
+          product.product_id === productId ? { ...product, is_active: newStatus } : product
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling product status:', error);
     }
   };
 
+  const handleDelete = async (productId) => {
+    try {
+      await productsApi.deleteProduct(productId);
+      setProducts(prev => prev.filter(product => product.product_id !== productId));
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
+  };
+
+  const handleExtendWarranty = (product) => {
+    navigation.navigate('EditProduct', { productId: product.product_id, extendMode: true });
+  };
+
+  const handleDeleteAllInactive = () => {
+    const inactiveProducts = products.filter(product => product.is_active === false);
+    if (inactiveProducts.length === 0) {
+      Alert.alert(
+        t('home.noInactiveTitle', 'No inactive warranties'),
+        t('home.noInactiveDescription', 'All warranties are currently active.')
+      );
+      return;
+    }
+
+    Alert.alert(
+      t('home.deleteInactiveTitle', 'Delete inactive warranties'),
+      t('home.deleteInactiveMessage', 'This will permanently remove all inactive warranties. Continue?'),
+      [
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+        {
+          text: t('common.delete', 'Delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsBulkDeleting(true);
+              await Promise.all(
+                inactiveProducts.map(product => productsApi.deleteProduct(product.product_id))
+              );
+              setProducts(prev => prev.filter(product => product.is_active !== false));
+            } catch (error) {
+              console.error('Error deleting inactive products:', error);
+            } finally {
+              setIsBulkDeleting(false);
+              loadProducts(true);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderProduct = ({ item }) => {
-    const warrantyStatus = getWarrantyStatus(item.warranty_end_date);
-    const purchaseDate = new Date(item.purchase_date).toLocaleDateString('sr-RS');
-
     return (
-      <TouchableOpacity
+      <ProductCard
+        product={item}
         onPress={() => navigation.navigate('ProductDetail', { productId: item.product_id })}
-      >
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardTitleContainer}>
-                <Text variant="titleMedium" style={styles.productName}>
-                  {item.product_name}
-                </Text>
-                {item.brand && (
-                  <Text variant="bodySmall" style={styles.brand}>
-                    {item.brand}
-                  </Text>
-                )}
-              </View>
-              <Chip
-                mode="flat"
-                style={[styles.statusChip, { backgroundColor: warrantyStatus.color + '20' }]}
-                textStyle={{ color: warrantyStatus.color, fontSize: 12 }}
-              >
-                {warrantyStatus.label}
-              </Chip>
-            </View>
-
-            <View style={styles.cardDetails}>
-              {item.Store && (
-                <Text variant="bodySmall" style={styles.detailText}>
-                  🏪 {item.Store.store_name}
-                </Text>
-              )}
-              <Text variant="bodySmall" style={styles.detailText}>
-                📅 {t('product.purchaseDate')}: {purchaseDate}
-              </Text>
-              {item.purchase_price && (
-                <Text variant="bodySmall" style={styles.detailText}>
-                  💰 {item.purchase_price} {item.currency}
-                </Text>
-              )}
-            </View>
-
-            {item.Category && (
-              <Chip
-                mode="outlined"
-                style={styles.categoryChip}
-                textStyle={{ fontSize: 11 }}
-              >
-                {item.Category.category_name}
-              </Chip>
-            )}
-          </Card.Content>
-        </Card>
-      </TouchableOpacity>
+        onToggleStatus={handleToggleStatus}
+        onDelete={handleDelete}
+        onExtend={handleExtendWarranty}
+      />
     );
   };
 
@@ -177,7 +213,11 @@ export default function HomeScreen({ navigation, route }) {
           />
           </View>
         <View style={styles.logoContainer}>
-          <Logo size="small" variant="outlined" animated={isLoading || refreshing} />
+          <Logo 
+            size="medium" 
+            animated={isLoading || refreshing}
+            imageSource={require('../../assets/logo.png')}
+          />
         </View>
         <View style={styles.appBarRight}>
           <Appbar.Action 
@@ -203,7 +243,7 @@ export default function HomeScreen({ navigation, route }) {
         onIconPress={() => navigation.navigate('Search')}
       />
 
-      {isLoading && products.length === 0 ? (
+      {(isLoading || isBulkDeleting) && products.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text>{t('common.loading')}</Text>
         </View>
@@ -224,6 +264,15 @@ export default function HomeScreen({ navigation, route }) {
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              </View>
+            ) : null
           }
         />
       )}
@@ -255,6 +304,14 @@ export default function HomeScreen({ navigation, route }) {
             onPress: () => {
               setFabOpen(false);
               navigation.navigate('AddProduct');
+            },
+          },
+          {
+            icon: 'delete',
+            label: t('home.deleteInactiveAction', 'Delete inactive warranties'),
+            onPress: () => {
+              setFabOpen(false);
+              handleDeleteAllInactive();
             },
           },
         ]}
@@ -297,7 +354,8 @@ const createStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 0,
-    paddingHorizontal: 4
+    paddingHorizontal: 2,
+    paddingVertical: 8,
   },
   appBarRight: {
     flexDirection: 'row',
@@ -330,43 +388,6 @@ const createStyles = (theme) => StyleSheet.create({
     padding: 16,
     paddingTop: 8
   },
-  card: {
-    marginBottom: 12,
-    elevation: 2,
-    backgroundColor: theme.colors.card
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12
-  },
-  cardTitleContainer: {
-    flex: 1,
-    marginRight: 8
-  },
-  productName: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: theme.colors.text
-  },
-  brand: {
-    color: theme.colors.textSecondary
-  },
-  statusChip: {
-    height: 32
-  },
-  cardDetails: {
-    marginBottom: 8
-  },
-  detailText: {
-    color: theme.colors.textSecondary,
-    marginBottom: 4
-  },
-  categoryChip: {
-    alignSelf: 'flex-start',
-    height: 32
-  },
   fabGroup: {
     position: 'absolute',
     right: 0,
@@ -376,5 +397,9 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.colors.fab,
     marginRight: 16,
     marginBottom: 16
+  },
+  loadingMore: {
+    paddingVertical: 20,
+    alignItems: 'center'
   }
 });

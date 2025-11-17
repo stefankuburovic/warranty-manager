@@ -25,7 +25,7 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await signInWithCredentials(username, password);
-      showToast(t('auth.welcome'), 'success');
+      // showToast(t('auth.welcome'), 'success');
     } catch (err) {
       console.error('Login error:', err);
       let errorMessage;
@@ -50,7 +50,12 @@ export default function LoginScreen({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoContainer}>
-          <Logo size="xlarge" variant="default" animated />
+          <Logo 
+            size="xlarge" 
+            variant="default" 
+            animated 
+            imageSource={require('../../assets/logo.png')}
+          />
         </View>
         
         <Text variant="headlineMedium" style={styles.title}>

@@ -152,6 +152,56 @@ export default function ProductDetailScreen({ navigation, route }) {
   const warrantyEndDate = new Date(product.warranty_end_date).toLocaleDateString(dateLocale);
   const warrantyStatus = product.warranty_status;
 
+  const getStatusChipInfo = () => {
+    const successColor = theme.colors.success || '#4caf50';
+    const warningColor = theme.colors.warning || '#ff9800';
+    const errorColor = theme.colors.error || '#f44336';
+    const inactiveColor = theme.colors.textSecondary || '#757575';
+    const applyAlpha = (color) =>
+      typeof color === 'string' && color.startsWith('#') ? `${color}20` : color;
+
+    if (product.is_active === false) {
+      return {
+        text: t('product.status.inactive', 'Inactive'),
+        color: inactiveColor,
+        background: applyAlpha(inactiveColor) || '#eeeeee',
+      };
+    }
+
+    if (warrantyStatus?.is_expired) {
+      return {
+        text: t('product.status.expired', 'Expired'),
+        color: errorColor,
+        background: applyAlpha(errorColor),
+      };
+    }
+
+    if (warrantyStatus?.expires_soon) {
+      const label =
+        warrantyStatus.days_remaining != null
+          ? t('product.status.daysLeft', { count: warrantyStatus.days_remaining })
+          : t('product.status.expiringSoon', 'Expiring Soon');
+      return {
+        text: label,
+        color: warningColor,
+        background: applyAlpha(warningColor),
+      };
+    }
+
+    const daysText =
+      warrantyStatus?.days_remaining != null
+        ? ` (${t('product.status.daysLeft', { count: warrantyStatus.days_remaining })})`
+        : '';
+
+    return {
+      text: `${t('product.status.active', 'Active')}${daysText}`,
+      color: successColor,
+      background: applyAlpha(successColor),
+    };
+  };
+
+  const statusChipInfo = getStatusChipInfo();
+
   return (
     <View style={styles.container}>
       <Appbar.Header style={styles.appBar}>
@@ -177,31 +227,13 @@ export default function ProductDetailScreen({ navigation, route }) {
               {t('product.warrantyStatus')}
             </Text>
             <View style={styles.statusContainer}>
-              {warrantyStatus.is_expired ? (
-                <Chip
-                  mode="flat"
-                  style={[styles.statusChip, { backgroundColor: theme.colors.error + '20' }]}
-                  textStyle={{ color: theme.colors.error }}
-                >
-                  {t('product.expired')}
-                </Chip>
-              ) : warrantyStatus.expires_soon ? (
-                <Chip
-                  mode="flat"
-                  style={[styles.statusChip, { backgroundColor: theme.colors.warning + '20' }]}
-                  textStyle={{ color: theme.colors.warning }}
-                >
-                  {t('product.expiresIn', { days: warrantyStatus.days_remaining })}
-                </Chip>
-              ) : (
-                <Chip
-                  mode="flat"
-                  style={[styles.statusChip, { backgroundColor: theme.colors.success + '20' }]}
-                  textStyle={{ color: theme.colors.success }}
-                >
-                  {t('product.active')} ({t('product.daysLeft', { count: warrantyStatus.days_remaining })})
-                </Chip>
-              )}
+              <Chip
+                mode="flat"
+                style={[styles.statusChip, { backgroundColor: statusChipInfo.background }]}
+                textStyle={{ color: statusChipInfo.color }}
+              >
+                {statusChipInfo.text}
+              </Chip>
             </View>
             <Text variant="bodyMedium" style={styles.dateText}>
               {t('product.warrantyExpires')}: {warrantyEndDate}

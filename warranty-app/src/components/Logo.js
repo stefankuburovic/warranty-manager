@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Image } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
 
@@ -8,7 +8,8 @@ export default function Logo({
   style, 
   variant = 'default',
   animated = false,
-  showText = true 
+  showText = true,
+  imageSource = null
 }) {
   const { theme } = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -79,7 +80,13 @@ export default function Logo({
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
       shadowRadius: 4,
+      overflow: 'hidden',
       ...variantStyle,
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'contain',
     },
     text: {
       fontSize: fontSize * 0.6,
@@ -95,7 +102,9 @@ export default function Logo({
   
   return (
     <Animated.View style={containerStyle}>
-      {showText && (
+      {imageSource ? (
+        <Image source={imageSource} style={styles.image} />
+      ) : showText && (
         <Text style={styles.text}>W</Text>
       )}
     </Animated.View>

@@ -3,12 +3,15 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Button, Appbar, Card, RadioButton, Chip } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { exportApi } from '../api/export';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ExportScreen({ navigation }) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [exportType, setExportType] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+  const styles = createStyles(theme);
 
   const handleExport = async () => {
     try {
@@ -176,10 +179,10 @@ export default function ExportScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: theme.colors.background
   },
   content: {
     flex: 1,
@@ -187,24 +190,26 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
-    elevation: 2
+    elevation: 2,
+    backgroundColor: theme.colors.card
   },
   cardTitle: {
     marginBottom: 16,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    color: theme.colors.text
   },
   radioItem: {
     paddingVertical: 4
   },
   radioDescription: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginLeft: 48,
     marginBottom: 12,
     marginTop: -8
   },
   filterLabel: {
     marginBottom: 12,
-    color: '#666'
+    color: theme.colors.textSecondary
   },
   chipContainer: {
     flexDirection: 'row',
@@ -224,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start'
   },
   bullet: {
-    color: '#4caf50',
+    color: theme.colors.success || '#4caf50',
     fontSize: 16,
     fontWeight: 'bold',
     marginRight: 12,
@@ -233,7 +238,8 @@ const styles = StyleSheet.create({
   featureText: {
     flex: 1,
     fontSize: 14,
-    lineHeight: 20
+    lineHeight: 20,
+    color: theme.colors.text
   },
   exportButton: {
     marginTop: 8,

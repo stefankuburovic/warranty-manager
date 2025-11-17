@@ -7,7 +7,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { searchApi } from '../api/search';
+import { productsApi } from '../api/products';
 import ProductCard from '../components/ProductCard';
+
+const PAGE_SIZE = 20;
 
 export default function SearchScreen({ navigation, route }) {
   const { t } = useTranslation();
@@ -15,6 +18,9 @@ export default function SearchScreen({ navigation, route }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filters, setFilters] = useState({});
@@ -35,7 +41,7 @@ export default function SearchScreen({ navigation, route }) {
   useEffect(() => {
     // Auto-search when filters or sort change
     if (searchQuery.length > 0 || Object.keys(filters).length > 0) {
-      performSearch();
+      performSearch(true);
     }
   }, [filters, sortBy]);
 
@@ -48,21 +54,48 @@ export default function SearchScreen({ navigation, route }) {
     }
   };
 
-  const performSearch = async () => {
+  const performSearch = async (reset = false) => {
     try {
-      setIsLoading(true);
+      if (reset) {
+        setIsLoading(true);
+        setCurrentPage(1);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const page = reset ? 1 : currentPage + 1;
       const results = await searchApi.searchProducts(
         searchQuery,
         filters,
-        { sortBy, page: 1, limit: 50 }
+        { sortBy, page, limit: PAGE_SIZE }
       );
-      setProducts(results.products || []);
+      
+      const newProducts = results.products || [];
+      
+      if (reset) {
+        setProducts(newProducts);
+      } else {
+        setProducts(prev => [...prev, ...newProducts]);
+      }
+      
+      setHasMore(results.hasMore !== false && newProducts.length === PAGE_SIZE);
+      setCurrentPage(page);
     } catch (error) {
       console.error('Search error:', error);
-      setProducts([]);
+      if (reset) {
+        setProducts([]);
+      }
     } finally {
       setIsLoading(false);
+      setLoadingMore(false);
       setShowSuggestions(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore && !isLoading && (searchQuery.length > 0 || Object.keys(filters).length > 0)) {
+      performSearch(false);
     }
   };
 
@@ -91,7 +124,7 @@ export default function SearchScreen({ navigation, route }) {
     // Debounce search
     searchTimeout.current = setTimeout(() => {
       if (text.length > 0) {
-        performSearch();
+        performSearch(true);
       } else {
         setProducts([]);
       }
@@ -99,13 +132,13 @@ export default function SearchScreen({ navigation, route }) {
   };
 
   const handleSearchSubmit = () => {
-    performSearch();
+    performSearch(true);
   };
 
   const handleSelectSuggestion = (suggestion) => {
     setSearchQuery(suggestion.text);
     setShowSuggestions(false);
-    performSearch();
+    performSearch(true);
   };
 
   const openFilters = () => {
@@ -215,10 +248,39 @@ export default function SearchScreen({ navigation, route }) {
     { value: 'warranty_expiry_desc', label: t('search.sort.expiringLatest') }
   ];
 
+  const handleToggleStatus = async (productId, newStatus) => {
+    try {
+      await productsApi.updateProduct(productId, { is_active: newStatus });
+      // Update local state
+      setProducts(products.map(p => 
+        p.product_id === productId ? { ...p, is_active: newStatus } : p
+      ));
+    } catch (error) {
+      console.error('Error toggling product status:', error);
+    }
+  };
+
+  const handleDelete = async (productId) => {
+    try {
+      await productsApi.deleteProduct(productId);
+      // Remove from local state
+      setProducts(products.filter(p => p.product_id !== productId));
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
+  };
+
+  const handleExtend = (product) => {
+    navigation.navigate('EditProduct', { productId: product.product_id, extendMode: true });
+  };
+
   const renderProductItem = ({ item }) => (
     <ProductCard
       product={item}
       onPress={() => navigation.navigate('ProductDetail', { productId: item.product_id })}
+      onToggleStatus={handleToggleStatus}
+      onDelete={handleDelete}
+      onExtend={handleExtend}
     />
   );
 
@@ -308,6 +370,10 @@ export default function SearchScreen({ navigation, route }) {
       opacity: 0.7, 
       paddingVertical: 32,
       color: theme.colors.textSecondary
+    },
+    loadingMore: {
+      paddingVertical: 20,
+      alignItems: 'center'
     }
   });
 
@@ -430,6 +496,15 @@ export default function SearchScreen({ navigation, route }) {
             renderItem={renderProductItem}
             keyExtractor={item => item.product_id.toString()}
             contentContainerStyle={styles.listContainer}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.loadingMore}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                </View>
+              ) : null
+            }
           />
         </>
       ) : searchQuery.length > 0 || Object.keys(filters).length > 0 ? (

@@ -3,12 +3,16 @@ import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 're
 import { Text, Appbar, Card, Chip } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { familyApi } from '../api/family';
+import { useTheme } from '../context/ThemeContext';
+import { formatCurrency } from '../utils/numberHelpers';
 
 export default function SharedProductsScreen({ navigation }) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const styles = createStyles(theme);
 
   useEffect(() => {
     loadProducts();
@@ -32,22 +36,26 @@ export default function SharedProductsScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  const getWarrantyStatus = (warrantyEndDate) => {
+  const getWarrantyStatus = (product) => {
+    if (product.is_active === false) {
+      return { label: t('product.status.inactive', 'Inactive'), color: '#757575' };
+    }
+
     const today = new Date();
-    const endDate = new Date(warrantyEndDate);
+    const endDate = new Date(product.warranty_end_date);
     const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
 
     if (daysRemaining < 0) {
-      return { label: t('product.expired'), color: '#f44336' };
+      return { label: t('product.status.expired', 'Expired'), color: '#f44336' };
     } else if (daysRemaining <= 30) {
-      return { label: t('product.daysLeft', { count: daysRemaining }), color: '#ff9800' };
+      return { label: t('product.status.daysLeft', { count: daysRemaining }), color: '#ff9800' };
     } else {
-      return { label: t('product.active'), color: '#4caf50' };
+      return { label: t('product.status.active', 'Active'), color: '#4caf50' };
     }
   };
 
   const renderProduct = ({ item }) => {
-    const warrantyStatus = getWarrantyStatus(item.warranty_end_date);
+    const warrantyStatus = getWarrantyStatus(item);
     const purchaseDate = new Date(item.purchase_date).toLocaleDateString();
     const sharedDate = new Date(item.shared_at).toLocaleDateString();
 
@@ -91,7 +99,7 @@ export default function SharedProductsScreen({ navigation }) {
               </Text>
               {item.purchase_price && (
                 <Text variant="bodySmall" style={styles.detailText}>
-                  💰 {item.purchase_price} {item.currency}
+                  💰 {formatCurrency(item.purchase_price, item.currency)}
                 </Text>
               )}
               <Text variant="bodySmall" style={styles.detailText}>
@@ -145,10 +153,10 @@ export default function SharedProductsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: theme.colors.background
   },
   emptyContainer: {
     flex: 1,
@@ -158,18 +166,20 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     marginBottom: 10,
-    textAlign: 'center'
+    textAlign: 'center',
+    color: theme.colors.text
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666'
+    color: theme.colors.textSecondary
   },
   list: {
     padding: 16
   },
   card: {
     marginBottom: 12,
-    elevation: 2
+    elevation: 2,
+    backgroundColor: theme.colors.card
   },
   cardHeader: {
     flexDirection: 'row',
@@ -183,14 +193,15 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontWeight: 'bold',
-    marginBottom: 4
+    marginBottom: 4,
+    color: theme.colors.text
   },
   brand: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 4
   },
   sharedBy: {
-    color: '#6200ee',
+    color: theme.colors.primary,
     fontStyle: 'italic'
   },
   statusChip: {
@@ -200,7 +211,7 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   detailText: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 4
   },
   categoryChip: {
