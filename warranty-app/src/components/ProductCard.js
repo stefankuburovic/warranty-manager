@@ -6,6 +6,7 @@ import { getWarrantyStatus, formatDate, getDaysUntilExpiry } from '../utils/date
 import { useTranslation } from 'react-i18next';
 
 const ACTION_WIDTH = 240;
+
 const priceFormatter = new Intl.NumberFormat('sr-RS', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -101,7 +102,7 @@ export default function ProductCard({ product, onPress, onToggleStatus, onDelete
     <ReanimatedSwipeable
       ref={swipeableRef}
       friction={2}
-      rightThreshold={ACTION_WIDTH / 2}
+      rightThreshold={ACTION_WIDTH / 5}
       overshootRight={false}
       renderRightActions={() => (
         <View style={styles.rightActions}>
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     width: ACTION_WIDTH,
     minHeight: 100,
     maxHeight: '89%',
@@ -222,8 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   toggleButton: {
     backgroundColor: '#ff9800',
@@ -238,7 +238,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: '600',
-    marginTop: 4,
     textAlign: 'center',
   },
 });

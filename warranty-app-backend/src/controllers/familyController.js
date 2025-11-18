@@ -357,6 +357,7 @@ exports.getSharedProducts = async (req, res) => {
       products: sharedProducts.map(sp => ({
         ...sp.Product.toJSON(),
         shared_by: sp.Sharer.full_name,
+        shared_by_id: sp.Sharer.user_id,
         shared_at: sp.shared_at
       }))
     });

@@ -4,9 +4,11 @@ import { Text, Appbar, Switch, Card, Button, Divider } from 'react-native-paper'
 import { useTranslation } from 'react-i18next';
 import { notificationsApi } from '../api/notifications';
 import notificationService from '../services/notificationService';
+import { useTheme } from '../context/ThemeContext';
 
 export default function NotificationSettingsScreen({ navigation }) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [settings, setSettings] = useState({
     notification_enabled: false,
     has_token: false,
@@ -14,6 +16,7 @@ export default function NotificationSettingsScreen({ navigation }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const styles = createStyles(theme);
 
   useEffect(() => {
     loadSettings();
@@ -259,15 +262,16 @@ export default function NotificationSettingsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: theme.colors.background
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: theme.colors.background
   },
   content: {
     flex: 1,
@@ -275,11 +279,13 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 16,
-    elevation: 2
+    elevation: 2,
+    backgroundColor: theme.colors.card
   },
   cardTitle: {
     marginBottom: 12,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    color: theme.colors.text
   },
   settingRow: {
     flexDirection: 'row',
@@ -291,11 +297,12 @@ const styles = StyleSheet.create({
     marginRight: 16
   },
   settingDescription: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 4
   },
   divider: {
-    marginVertical: 16
+    marginVertical: 16,
+    backgroundColor: theme.colors.divider
   },
   infoRow: {
     flexDirection: 'row',
@@ -303,16 +310,17 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   infoLabel: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontSize: 14
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: '500'
+    fontWeight: '500',
+    color: theme.colors.text
   },
   scheduleText: {
     marginBottom: 12,
-    color: '#666'
+    color: theme.colors.textSecondary
   },
   scheduleItem: {
     flexDirection: 'row',
@@ -320,15 +328,16 @@ const styles = StyleSheet.create({
   },
   bullet: {
     marginRight: 8,
-    color: '#6200ee'
+    color: theme.colors.primary
   },
   scheduleItemText: {
     flex: 1,
-    fontSize: 14
+    fontSize: 14,
+    color: theme.colors.text
   },
   scheduleNote: {
     marginTop: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontStyle: 'italic'
   },
   actionButton: {
@@ -336,7 +345,7 @@ const styles = StyleSheet.create({
   },
   aboutText: {
     marginBottom: 12,
-    color: '#666'
+    color: theme.colors.textSecondary
   }
 });
 

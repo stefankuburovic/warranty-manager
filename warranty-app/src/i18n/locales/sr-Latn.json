@@ -103,10 +103,11 @@
     "expiresLabel": "Ističe",
     "priceLabel": "Cena",
     "actions": {
-      "markInactive": "Označi kao neaktivnu",
-      "markActive": "Označi kao aktivnu",
+      "markInactive": "Deaktiviraj",
+      "markActive": "Aktiviraj",
       "delete": "Obriši",
-      "extend": "Produži"
+      "extend": "Produži",
+      "unshare": "Prekini deljenje"
     },
     "addProduct": "Dodaj proizvod",
     "editProduct": "Izmeni proizvod",
