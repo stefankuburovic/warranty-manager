@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Share } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Share, TouchableOpacity } from 'react-native';
 import { Text, Button, Appbar, Card, List, Chip, Dialog, Portal, TextInput, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { familyApi } from '../api/family';
@@ -12,6 +12,8 @@ export default function FamilyScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const [family, setFamily] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sharedPreview, setSharedPreview] = useState([]);
+  const [isSharedLoading, setIsSharedLoading] = useState(true);
   const [createDialogVisible, setCreateDialogVisible] = useState(false);
   const [joinDialogVisible, setJoinDialogVisible] = useState(false);
   const [familyName, setFamilyName] = useState('');
@@ -26,10 +28,28 @@ export default function FamilyScreen({ navigation }) {
       setIsLoading(true);
       const data = await familyApi.getFamily();
       setFamily(data.family);
+      if (data.family) {
+        loadSharedPreview();
+      } else {
+        setSharedPreview([]);
+      }
     } catch (error) {
       console.error('Load family error:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSharedPreview = async () => {
+    try {
+      setIsSharedLoading(true);
+      const data = await familyApi.getSharedProducts();
+      setSharedPreview((data.products || []).slice(0, 2));
+    } catch (error) {
+      console.error('Load shared products error:', error);
+      setSharedPreview([]);
+    } finally {
+      setIsSharedLoading(false);
     }
   };
 
@@ -155,6 +175,41 @@ export default function FamilyScreen({ navigation }) {
     }
   };
 
+  const getSharedProductStatus = (product) => {
+    const successColor = theme.colors.success || '#4caf50';
+    const warningColor = theme.colors.warning || '#ff9800';
+    const errorColor = theme.colors.error || '#f44336';
+    const inactiveColor = theme.colors.textSecondary || '#757575';
+    const applyAlpha = (color) =>
+      typeof color === 'string' && color.startsWith('#') ? `${color}20` : color;
+
+    if (product.is_active === false) {
+      return { label: t('product.status.inactive', 'Inactive'), color: inactiveColor, background: applyAlpha(inactiveColor) };
+    }
+
+    const today = new Date();
+    const endDate = new Date(product.warranty_end_date);
+    const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+
+    if (daysRemaining < 0) {
+      return { label: t('product.status.expired', 'Expired'), color: errorColor, background: applyAlpha(errorColor) };
+    }
+
+    if (daysRemaining <= 30) {
+      return {
+        label: t('product.status.daysLeft', { count: daysRemaining }),
+        color: warningColor,
+        background: applyAlpha(warningColor)
+      };
+    }
+
+    return {
+      label: t('product.status.active', 'Active'),
+      color: successColor,
+      background: applyAlpha(successColor)
+    };
+  };
+
   const dynamicStyles = StyleSheet.create({
     container: {
       flex: 1,
@@ -205,6 +260,34 @@ export default function FamilyScreen({ navigation }) {
     sharedDescription: {
       color: theme.colors.textSecondary,
       marginTop: 8
+    },
+    sharedProductItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border || '#dddddd'
+    },
+    sharedProductInfo: {
+      flex: 1,
+      marginRight: 12
+    },
+    sharedProductTitle: {
+      fontWeight: '600',
+      marginBottom: 2,
+      color: theme.colors.text
+    },
+    sharedProductSub: {
+      color: theme.colors.textSecondary,
+      marginBottom: 2
+    },
+    sharedProductMeta: {
+      color: theme.colors.textSecondary,
+      fontSize: 12
+    },
+    sharedStatusChip: {
+      height: 32
     }
   });
 
@@ -422,9 +505,48 @@ export default function FamilyScreen({ navigation }) {
                 {t('family.viewAll')}
               </Button>
             </View>
-            <Text variant="bodyMedium" style={dynamicStyles.sharedDescription}>
-              {t('family.sharedProductsDescription')}
-            </Text>
+            {isSharedLoading ? (
+              <Text variant="bodyMedium" style={dynamicStyles.sharedDescription}>
+                {t('common.loading')}
+              </Text>
+            ) : sharedPreview.length === 0 ? (
+              <Text variant="bodyMedium" style={dynamicStyles.sharedDescription}>
+                {t('family.sharedProductsDescription')}
+              </Text>
+            ) : (
+              sharedPreview.map((product) => {
+                const status = getSharedProductStatus(product);
+                const purchaseDate = new Date(product.purchase_date).toLocaleDateString();
+                return (
+                  <TouchableOpacity
+                    key={product.product_id}
+                    style={dynamicStyles.sharedProductItem}
+                    onPress={() => navigation.navigate('ProductDetail', { productId: product.product_id })}
+                    activeOpacity={0.85}
+                  >
+                    <View style={dynamicStyles.sharedProductInfo}>
+                      <Text style={dynamicStyles.sharedProductTitle}>{product.product_name}</Text>
+                      {product.brand && (
+                        <Text style={dynamicStyles.sharedProductSub}>{product.brand}</Text>
+                      )}
+                      <Text style={dynamicStyles.sharedProductMeta}>
+                        {t('family.sharedBy')}: {product.shared_by}
+                      </Text>
+                      <Text style={dynamicStyles.sharedProductMeta}>
+                        {t('product.purchaseDate')}: {purchaseDate}
+                      </Text>
+                    </View>
+                    <Chip
+                      mode="flat"
+                      style={[dynamicStyles.sharedStatusChip, { backgroundColor: status.background }]}
+                      textStyle={{ color: status.color, fontSize: 11 }}
+                    >
+                      {status.label}
+                    </Chip>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </Card.Content>
         </Card>
 

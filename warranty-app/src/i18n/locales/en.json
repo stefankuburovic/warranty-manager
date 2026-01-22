@@ -105,7 +105,8 @@
       "markInactive": "Make inactive",
       "markActive": "Make active",
       "delete": "Delete",
-      "extend": "Extend"
+      "extend": "Extend",
+      "unshare": "Stop sharing"
     },
     "expiresIn": "Expires in {{days}} days",
     "expiredOn": "Expired on {{date}}",
