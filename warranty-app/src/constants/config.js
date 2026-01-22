@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GOOGLE_WEB_CLIENT_ID_ENV, GOOGLE_IOS_CLIENT_ID_ENV, GOOGLE_ANDROID_CLIENT_ID_ENV } from '@env';
 
 const IP_STORAGE_KEY = '@api_server_ip';
 //192.168.55.94
@@ -74,8 +75,3 @@ getAPIURL().then(url => {
  * @returns {string} The API URL
  */
 export const getCachedAPIURL = () => cachedAPIURL;
-
-export const GOOGLE_WEB_CLIENT_ID = '1011307825941-h7psi33eqq5d6k42vohpv2fveiae53fj.apps.googleusercontent.com';
-export const GOOGLE_IOS_CLIENT_ID = '1011307825941-pjv80ajm1mapm6m00u1r87qf5e8ff4g1.apps.googleusercontent.com';
-export const GOOGLE_ANDROID_CLIENT_ID = '1011307825941-q13qb5nqne52lthms8pa1fsjhmceim40.apps.googleusercontent.com';
-
